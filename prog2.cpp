@@ -13,6 +13,10 @@ using namespace std;
 
 vector<Node*> nodes;
 
+void *testThread(void *aThing) {
+	cout << (int*)aThing << endl;
+}
+
 int main(int argc, char *argv[]) {
 	string fileName = "input.txt";
 
@@ -50,10 +54,21 @@ int main(int argc, char *argv[]) {
 			
 			tempNode->addNeighbor(stoi(newString));
 			
+			tempNode->outputNode();
 			nodes.push_back(tempNode);
 		}
 		
 		inputFile.close();
 			
 	} else cout << "\nUnable to open file." << endl;
+	
+	int i=0;
+	pthread_t myThread;
+	for(i = 0; i < nodes.size(); i++) {
+		pthread_create(&myThread, NULL, testThread, &i);		
+	}
+	pthread_join(myThread, NULL);
+	cout << "I am also here" << endl;
+	
 }
+

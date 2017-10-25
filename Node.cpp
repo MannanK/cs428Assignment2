@@ -37,3 +37,16 @@ void Node :: removeNeighbor(int neighborID) {
 		neighbors.erase(neighbors.begin()+index);
 	}
 }
+
+void Node :: outputNode() {
+	cout << "Node ID: " << nodeID << endl;
+	cout << "HostName: " << hostname << endl;
+	cout << "Control Port: " << controlPort << endl;
+	cout << "Data Port: " << dataPort << endl;
+	cout << "Neighbors: ";
+	int i;
+	for(i=0; i < neighbors.size(); i++) {
+		cout << neighbors.at(i) << ", ";
+	}
+	cout << endl << endl;
+}
