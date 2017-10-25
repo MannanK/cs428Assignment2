@@ -21,26 +21,36 @@ int main(int argc, char *argv[]) {
 	if (inputFile.is_open()) {
 		string newString;
 		int nodeID, controlPort, dataPort;
-		string hostName, neighborsString;
+		string hostName;
 		
 		while (getline(inputFile, newString)) {
 			std::istringstream ss1;
 			ss1.str(newString);
-			ss1 >> nodeID >> hostName >> controlPort >> dataPort >> neighborsString;
-			
-			std::istringstream ss2;
-			ss2.str(neighborsString);
-			int temp;
+			ss1 >> nodeID >> hostName >> controlPort >> dataPort;
 			
 			Node* tempNode = new Node(nodeID, hostName, controlPort, dataPort);
 			
-			while(ss2 >> temp) {
-				tempNode->addNeighbor(temp);
+			string delimiter = "\t";
+			size_t pos = 0;
+			string token;
+			int count = 0;
+			
+			while ((pos = newString.find(delimiter)) != string::npos) {
+				token = newString.substr(0, pos);
+				newString.erase(0, pos + delimiter.length());
+			
+				if(count < 4) {
+					count++;
+				}
+				
+				else {
+					tempNode->addNeighbor(stoi(token));
+				}
 			}
 			
-			nodes.push_back(tempNode);
+			tempNode->addNeighbor(stoi(newString));
 			
-			cout << nodeID << endl << hostName << endl << controlPort << endl << dataPort << endl;
+			nodes.push_back(tempNode);
 		}
 		
 		inputFile.close();
