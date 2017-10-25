@@ -13,6 +13,10 @@ using namespace std;
 
 vector<Node*> nodes;
 
+void *testThread(void *aThing) {
+	cout << (int*)aThing << endl;
+}
+
 int main(int argc, char *argv[]) {
 	string fileName = "input.txt";
 
@@ -21,39 +25,40 @@ int main(int argc, char *argv[]) {
 	if (inputFile.is_open()) {
 		string newString;
 		int nodeID, controlPort, dataPort;
-		string hostName;
+		string hostName, neighborsString;
 		
 		while (getline(inputFile, newString)) {
 			std::istringstream ss1;
 			ss1.str(newString);
-			ss1 >> nodeID >> hostName >> controlPort >> dataPort;
+			ss1 >> nodeID >> hostName >> controlPort >> dataPort >> neighborsString;
+			
+			//cout << neighborsString << endl;
+			std::istringstream ss2;
+			ss2.str(neighborsString);
+			int temp;
 			
 			Node* tempNode = new Node(nodeID, hostName, controlPort, dataPort);
 			
-			string delimiter = "\t";
-			size_t pos = 0;
-			string token;
-			int count = 0;
-			
-			while ((pos = newString.find(delimiter)) != string::npos) {
-				token = newString.substr(0, pos);
-				newString.erase(0, pos + delimiter.length());
-			
-				if(count < 4) {
-					count++;
-				}
-				
-				else {
-					tempNode->addNeighbor(stoi(token));
-				}
+			while(ss2 >> temp) {
+				tempNode->addNeighbor(temp);
 			}
 			
-			tempNode->addNeighbor(stoi(newString));
-			
 			nodes.push_back(tempNode);
+			
+			//tempNode->outputNode();
 		}
 		
 		inputFile.close();
 			
 	} else cout << "\nUnable to open file." << endl;
+	
+	int i=0;
+	pthread_t myThread;
+	for(i = 0; i < nodes.size(); i++) {
+		pthread_create(&myThread, NULL, testThread, &i);		
+	}
+	pthread_join(myThread, NULL);
+	cout << "I am also here" << endl;
+	
 }
+
