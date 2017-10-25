@@ -8,7 +8,7 @@ using namespace std;
 class Node {
 	public:
 		Node();
-		Node(int nodeID_, string hostname_, int controlPort_, int dataPort_, vector<int> neighbors_);
+		Node(int nodeID_, string hostname_, int controlPort_, int dataPort_);
 		int nodeID;
 		string hostname;
 		int controlPort;
