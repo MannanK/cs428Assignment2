@@ -12,7 +12,7 @@ Node :: Node() {
 	dataPort = -1;
 }
 
-Node :: Node (int nodeID_, string hostname_, int controlPort_, int dataPort_, vectory<int> neighbors_) {
+Node :: Node (int nodeID_, string hostname_, int controlPort_, int dataPort_, vector<int> neighbors_) {
 	nodeID = nodeID_;
 	hostname = hostname_;
 	controlPort = controlPort_;
