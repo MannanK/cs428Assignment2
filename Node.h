@@ -10,7 +10,7 @@ class Node {
 		Node();
 		Node(int nodeID_, string hostname_, int controlPort_, int dataPort_);
 		int nodeID;
-		string hostname;
+		string hostName;
 		int controlPort;
 		int dataPort;
 		vector<int> neighbors;

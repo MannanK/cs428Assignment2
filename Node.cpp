@@ -7,14 +7,14 @@ using namespace std;
 
 Node :: Node() {
 	nodeID = -1;
-	hostname = "";
+	hostName = "";
 	controlPort = -1;
 	dataPort = -1;
 }
 
 Node :: Node (int nodeID_, string hostname_, int controlPort_, int dataPort_) {
 	nodeID = nodeID_;
-	hostname = hostname_;
+	hostName = hostname_;
 	controlPort = controlPort_;
 	dataPort = dataPort_;
 }
@@ -42,7 +42,7 @@ void Node :: removeNeighbor(int neighborID) {
 //Simple output for Node
 void Node :: outputNode() {
 	cout << "Node ID: " << nodeID << endl;
-	cout << "HostName: " << hostname << endl;
+	cout << "HostName: " << hostName << endl;
 	cout << "Control Port: " << controlPort << endl;
 	cout << "Data Port: " << dataPort << endl;
 	cout << "Neighbors: ";

@@ -29,11 +29,11 @@ void generate(int destination) {
 }
 
 void addLink(int destination) {
-
+	thisNode->addNeighbor(destination);
 }
 
 void removeLink(int destination) {
-
+	thisNode->removeNeighbor(destination);
 }
 
 void *controlThread(void *dummy) {
@@ -47,13 +47,18 @@ void *controlThread(void *dummy) {
 	int bytesReceived;
 	unsigned char buffer[1024];
 	
+	fd_set rfds;
 	
 	//Create the socket for the Node
-    int sd=0;
+    int sd;
     if((sd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         perror("Cannot create socket");
         exit(1);
     }
+    
+    FD_ZERO(&rfds);
+    FD_SET(0, &rfds);
+	FD_SET(sd, &rfds);
     
     memset((char*)&myAddr, 0, sizeof(myAddr));
     myAddr.sin_family = AF_INET;
@@ -68,12 +73,24 @@ void *controlThread(void *dummy) {
     
     while(true) {
         cout << "Waiting on port " << thisNode->controlPort << endl;
-        bytesReceived = recvfrom(sd, buffer, 1024, 0, (struct sockaddr*)&remoteAddr, &addrLen);
-        cout << "Received " << bytesReceived << " bytes." << endl;
-        if(bytesReceived > 0) {
-            buffer[bytesReceived] = 0;
-            cout << "Message: " << buffer << endl;
+        
+        fd_set tempfdset;
+		FD_ZERO(&tempfdset);
+		tempfdset = rfds;
+		
+		if (select(sd+1, &tempfdset, NULL, NULL, NULL) == -1) {
+            perror("select: ");
+            exit(1);
         }
+        
+        if (FD_ISSET(sd, &tempfdset)) {
+			bytesReceived = recvfrom(sd, buffer, 1024, 0, (struct sockaddr*)&remoteAddr, &addrLen);
+		    cout << "Received " << bytesReceived << " bytes." << endl;
+		    if(bytesReceived > 0) {
+		        buffer[bytesReceived] = 0;
+		        cout << "Message: " << buffer << endl;
+		    }
+		}
     }
 }
 
