@@ -23,6 +23,7 @@ void Node :: addNeighbor(int neighborID) {
 	neighbors.push_back(neighborID);
 }
 
+//Remove a neighbor from the neighbor vector
 void Node :: removeNeighbor(int neighborID) {
 	int i;
 	int index = -1;
@@ -38,6 +39,7 @@ void Node :: removeNeighbor(int neighborID) {
 	}
 }
 
+//Simple output for Node
 void Node :: outputNode() {
 	cout << "Node ID: " << nodeID << endl;
 	cout << "HostName: " << hostname << endl;

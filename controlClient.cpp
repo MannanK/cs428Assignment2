@@ -13,21 +13,14 @@ using namespace std;
 
 vector<Node*> nodes;
 
-void *controlThread(void *aThing) {
-	int index = *((int *) aThing);
-	nodes.at(index)->outputNode();
-}
-
-void *dataThread(void *aThing) {
-	int index = *((int *) aThing);
-	nodes.at(index)->outputNode();
-}
-
 int main(int argc, char *argv[]) {
 	string fileName = "input.txt";
 
 	ifstream inputFile(fileName);
 	
+	string command = argv[1];
+	int source = stoi(argv[2]);
+	int destination = stoi(argv[3]);
 	if (inputFile.is_open()) {
 		string newString;
 		int nodeID, controlPort, dataPort;
@@ -67,20 +60,6 @@ int main(int argc, char *argv[]) {
 			
 	} else cout << "\nUnable to open file." << endl;
 	
-	int i=0;
-	pthread_t myThread;
-	for(i = 0; i < nodes.size(); i++) {
-		pthread_create(&myThread, NULL, controlThread, &i);
-		pthread_join(myThread, NULL);
-		pthread_create(&myThread, NULL, dataThread, &i);
-		pthread_join(myThread, NULL);		
-	}
-	cout << endl;
-	
-	pthread_join(myThread, NULL);
-	cout << "I am also here" << endl;
-	
-	while(true) {}
 	
 }
 
