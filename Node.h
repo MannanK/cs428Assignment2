@@ -17,4 +17,5 @@ class Node {
 		
 		void addNeighbor(int neighborID);
 		void removeNeighbor(int neighborID);
+		void outputNode();
 };

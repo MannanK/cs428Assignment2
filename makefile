@@ -1,10 +1,10 @@
-all:	prog2
+all:	controlClient
 
-prog2:	prog2.o
-	g++ -pthread -std=c++11 Node.o prog2.o -o prog2
+controlClient:	controlClient.o
+	g++ -pthread -std=c++11 Node.o prog2.o -o controlClient
 
-prog2.o:	prog2.cpp
-	g++ -std=c++11 -c Node.cpp prog2.cpp
+controlClient.o:	controlClient.cpp
+	g++ -std=c++11 -c Node.cpp controlClient.cpp
 
 clean:
-	rm -f *.o prog2
+	rm -f *.o controlClient
