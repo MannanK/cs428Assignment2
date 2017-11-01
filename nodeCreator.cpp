@@ -21,7 +21,7 @@
 using namespace std;
 
 //The Node for this process
-Node* thisNode;
+Node* thisNode = new Node();
 
 //generate-packet command, send packet to destination node
 void generate(int destination) {
@@ -72,6 +72,7 @@ void *controlThread(void *dummy) {
     }
     
     while(true) {
+    
         cout << "Waiting on port " << thisNode->controlPort << endl;
         
         fd_set tempfdset;
@@ -124,8 +125,11 @@ int main(int argc, char* argv[]) {
 			    std::istringstream ss1;
 			    ss1.str(newString);
 			    ss1 >> nodeID >> hostName >> controlPort >> dataPort;
-			
-			    thisNode = new Node(nodeID, hostName, controlPort, dataPort);
+			    
+			    thisNode->nodeID = nodeID;
+                thisNode->hostName = hostName;
+                thisNode->controlPort = controlPort;
+                thisNode->dataPort = dataPort;
 			
 			    string delimiter = "\t";
 			    size_t pos = 0;
@@ -141,21 +145,68 @@ int main(int argc, char* argv[]) {
 				    }
 				
 				    else {
-					    thisNode->addNeighbor(stoi(token));
+				        Node* neighbor = new Node();
+				        neighbor->nodeID = stoi(token);
+				        thisNode->neighborInfo.push_back(neighbor);
+					    //thisNode->addNeighbor(stoi(token));
 				    }
 			    }
-			
-			    thisNode->addNeighbor(stoi(newString));
-			    break;
+			    Node* neighbor = new Node();
+			    neighbor->nodeID = stoi(newString);
+			    thisNode->neighborInfo.push_back(neighbor);
+			    //thisNode->addNeighbor(stoi(newString));
+			    
             }
-            else{counter++;}
+            
+            
+                
+            //Routing table is a 2D Vector, initially sets next hop and distance to -1
+			vector<int>data;
+            data.push_back(counter);
+            data.push_back(-1);
+            data.push_back(-1);
+			thisNode->routingTable.push_back(data);
+			
+			//Update counter
+            counter++;
 			
 		}
 		
 		inputFile.close();
+		
 			
 	} else cout << "\nUnable to open file." << endl;
 
+
+	ifstream inputFile2(fileName);
+	if(inputFile2.is_open()) {
+	
+	    string newString;
+	    int nodeID, controlPort, dataPort;
+	    string hostName;
+	
+	    int counter = 1;
+	    //Read line by line
+	    while (getline(inputFile2, newString)) {
+
+            //If line matches one of the neighbors, retrieve that neighbors info and save it
+	        for(int i = 0; i < thisNode->neighborInfo.size(); i++) {
+	            if(counter == thisNode->neighborInfo.at(i)->nodeID) {
+	                
+	                std::istringstream ss1;
+			        ss1.str(newString);
+			        ss1 >> nodeID >> hostName >> controlPort >> dataPort;
+			        
+			        thisNode->neighborInfo.at(i)->hostName = hostName;
+			        thisNode->neighborInfo.at(i)->controlPort = controlPort;
+			        thisNode->neighborInfo.at(i)->dataPort = dataPort;
+	                break;
+	            }         
+	        }
+	        counter++;
+	    }
+	}
+		
     //Create threads for the data and  control ports of the node
     int i=0;
 	pthread_t myThread;

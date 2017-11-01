@@ -1,6 +1,8 @@
 #include <iostream>
 #include <stdlib.h>
 #include <string>
+#include <vector>
+
 #include "Node.h"
 
 using namespace std;
@@ -45,10 +47,20 @@ void Node :: outputNode() {
 	cout << "HostName: " << hostName << endl;
 	cout << "Control Port: " << controlPort << endl;
 	cout << "Data Port: " << dataPort << endl;
-	cout << "Neighbors: ";
+	cout << "Neighbors: " << endl;
 	int i;
-	for(i=0; i < neighbors.size(); i++) {
-		cout << neighbors.at(i) << ", ";
+	for(i=0; i < neighborInfo.size(); i++) {
+		cout << "ID: " << neighborInfo.at(i)->nodeID;
+		cout << ", Name: " << neighborInfo.at(i)->hostName;
+		cout << ", Control: " << neighborInfo.at(i)->controlPort;
+		cout << ", Data: " << neighborInfo.at(i)->dataPort << endl;
 	}
-	cout << endl << endl;
+	cout << endl;
+	
+	cout << "Routing Table: " << endl;
+	for(i = 0; i < routingTable.size(); i++) {
+		cout << "(" << routingTable.at(i).at(0) << ", " << routingTable.at(i).at(1) << ", " << routingTable.at(i).at(2) << ")" << endl;
+	}
+	cout << endl;
+	
 }
