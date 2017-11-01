@@ -23,6 +23,23 @@ using namespace std;
 //The Node for this process
 Node* thisNode = new Node();
 
+void updateTable() {
+    //Reset routing table
+    for(int i = 0; i < thisNode->routingTable.size(); i++) {
+        thisNode->routingTable.at(i).at(0) = i+1;
+        thisNode->routingTable.at(i).at(1) = -1;
+        thisNode->routingTable.at(i).at(2) = -1;
+    }
+    
+    //Ensure all neighbors now 1 hop away
+    for(int i = 0; i < thisNode->neighborInfo.size(); i++) {
+        thisNode->routingTable.at(thisNode->neighborInfo.at(i)->nodeID-1).at(1) = thisNode->neighborInfo.at(i)->nodeID;
+        thisNode->routingTable.at(thisNode->neighborInfo.at(i)->nodeID-1).at(2) = 1;
+    }
+    
+    thisNode->outputNode();
+}
+
 //generate-packet command, send packet to destination node
 void generate(int destination) {
 
@@ -212,6 +229,7 @@ int main(int argc, char* argv[]) {
 	    }
 	}
 		
+		updateTable();
     //Create threads for the data and  control ports of the node
     int i=0;
 	pthread_t myThread;
