@@ -22,17 +22,8 @@ using namespace std;
 
 vector<Node*> nodes;
 
-void passCommand(string command_, int source_, int destination_) {
-	struct temp {
-		string command;
-		int source;
-		int destination;
-	} combined;
-	
-	combined.command = command_;
-	combined.source = source_;
-	combined.destination = destination_;
-	
+void passCommand(string command, int source, int destination) {
+
 	struct sockaddr_in myAddr, remoteAddr;
 	socklen_t remoteAddrLen = sizeof(remoteAddr);
 	
@@ -60,9 +51,9 @@ void passCommand(string command_, int source_, int destination_) {
 	
 	memset((char*)&servAddr, 0, sizeof(servAddr));
 	servAddr.sin_family = AF_INET;
-	servAddr.sin_port = htons(nodes.at(source_-1)->controlPort);
+	servAddr.sin_port = htons(nodes.at(source-1)->controlPort);
 	
-// THIS DOESN'T WORK
+/* THIS DOESN'T WORK
 	hostInfo = gethostbyname(nodes.at(source_-1)->hostName.c_str());
 	if(!hostInfo) {
 		fprintf(stderr, "address of %s could not be obtained", nodes.at(source_-1)->hostName);
@@ -81,21 +72,70 @@ void passCommand(string command_, int source_, int destination_) {
 		fprintf(stderr, "inet_aton() failed\n");
 		exit(1);
 	}
-//
+*/
 
+// ----------------------------------------------
 
-//THIS WORKS
+//get the IP address of servhost
+	struct hostent *tempStruct;
+	if ((tempStruct = gethostbyname(nodes.at(source-1)->hostName.c_str())) == NULL) {
+		fprintf(stderr, "Error while getting host name\n");
+		exit(1);
+	}
+	
+	struct in_addr **ipAddress;
+    ipAddress = (struct in_addr **) tempStruct->h_addr_list;
+	
+	servAddr.sin_addr.s_addr = inet_addr(inet_ntoa(*ipAddress[0]));
+	
+// ----------------------------------------------
+
+/*	THIS WORKS
 	char *server = "127.0.0.1";
 	if (inet_aton(server, &servAddr.sin_addr)==0) {
 		fprintf(stderr, "inet_aton() failed\n");
 		exit(1);
 	}
-//
+*/
 
-	sprintf(msg, "This is packet 1");
+	string temp = command + " " + to_string(destination);	
+	strcpy(msg, temp.c_str());
+
 	if(sendto(sd, msg, strlen(msg), 0, (struct sockaddr*)&servAddr, remoteAddrLen) == -1) {
 		perror("message sending failed");
 	}
+	
+	if(command != "generate-packet") {
+		struct sockaddr_in servAddr2;
+	
+		memset((char*)&servAddr2, 0, sizeof(servAddr2));
+		servAddr2.sin_family = AF_INET;
+		servAddr2.sin_port = htons(nodes.at(destination-1)->controlPort);
+		
+		struct hostent *tempStruct2;
+		if ((tempStruct2 = gethostbyname(nodes.at(destination-1)->hostName.c_str())) == NULL) {
+			fprintf(stderr, "Error while getting host name\n");
+			exit(1);
+		}
+	
+		struct in_addr **ipAddress2;
+		ipAddress2 = (struct in_addr **) tempStruct2->h_addr_list;
+	
+		servAddr2.sin_addr.s_addr = inet_addr(inet_ntoa(*ipAddress2[0]));
+	
+		string temp = command + " " + to_string(source);	
+		strcpy(msg, temp.c_str());
+	
+		if(sendto(sd, msg, strlen(msg), 0, (struct sockaddr*)&servAddr2, remoteAddrLen) == -1) {
+			perror("message sending failed");
+		}
+	}
+
+/*	sprintf(msg, "This is packet 1");
+	if(sendto(sd, msg, strlen(msg), 0, (struct sockaddr*)&servAddr, remoteAddrLen) == -1) {
+		perror("message sending failed");
+	}
+*/
 	close(sd);
 }
 

@@ -45,12 +45,24 @@ void generate(int destination) {
 
 }
 
-void addLink(int destination) {
-	thisNode->addNeighbor(destination);
+void createLink(int destination) {
+	Node* newDest = new Node();
+	newDest->nodeID = destination;
+	thisNode->neighborInfo.push_back(newDest);
+	
+	thisNode->outputNode();
 }
 
 void removeLink(int destination) {
-	thisNode->removeNeighbor(destination);
+	for(int i=0; i < thisNode->neighborInfo.size(); i++) {
+		if(destination == thisNode->neighborInfo.at(i)->nodeID) {
+			thisNode->neighborInfo.erase(thisNode->neighborInfo.begin()+i);
+			break;
+		}
+	}
+	
+	thisNode->outputNode();
+	//update routing table
 }
 
 void *controlThread(void *dummy) {
@@ -58,20 +70,16 @@ void *controlThread(void *dummy) {
 	//Output the node
 	thisNode->outputNode();
 	
-/*	struct temp {
-		string command;
-		int source;
-		int destination;
-	} combined;
-*/
+	string command;
+	int destination;
 	
 	struct sockaddr_in myAddr;
 	struct sockaddr_in remoteAddr;
 	socklen_t addrLen = sizeof(remoteAddr);
 	int bytesReceived;
-	unsigned char buffer[1024];
+	char buffer[1024];
 	
-//	fd_set rfds;
+	fd_set rfds;
 	
 	//Create the socket for the Node
     int sd;
@@ -80,8 +88,8 @@ void *controlThread(void *dummy) {
         exit(1);
     }
     
-//    FD_ZERO(&rfds);
-//	FD_SET(sd, &rfds);
+    FD_ZERO(&rfds);
+	FD_SET(sd, &rfds);
     
     memset((char*)&myAddr, 0, sizeof(myAddr));
     myAddr.sin_family = AF_INET;
@@ -94,37 +102,169 @@ void *controlThread(void *dummy) {
         exit(1);
     }
     
+/*
+
+	char * servhost; // full name of this host
+	ushort servport; // port assigned to this server
+
+    char hostName[128];
+	gethostname(hostName, sizeof(hostName));
+	
+	struct hostent *tempStruct;
+	if ((tempStruct = gethostbyname(hostName)) == NULL) {
+		fprintf(stderr, "Error while getting host name\n");
+		exit(1);
+	}
+	
+	servhost = tempStruct->h_name;
+
+	struct sockaddr_in portAddress;
+	socklen_t portAddressLength = sizeof(portAddress);
+	
+	if (getsockname(sd, (struct sockaddr*) &portAddress, &portAddressLength) == -1) {
+		fprintf(stderr, "Error while getting socket name\n");
+		exit(1);
+	}
+	
+	servport = ntohs(portAddress.sin_port);
+
+	// ready to accept requests
+	printf("admin: started server on '%s' at '%hu'\n", servhost, servport);
+	
+*/
+    
     while(true) {
         cout << "Waiting on port " << thisNode->controlPort << endl;
         
-//        fd_set tempfdset;
-//		FD_ZERO(&tempfdset);
-//		tempfdset = rfds;
+        fd_set tempfdset;
+		FD_ZERO(&tempfdset);
+		tempfdset = rfds;
 		
-//		if (select(sd+1, &tempfdset, NULL, NULL, NULL) == -1) {
-//            perror("select: ");
-//            exit(1);
-//        }
+		if (select(sd+1, &tempfdset, NULL, NULL, NULL) == -1) {
+            perror("select: ");
+            exit(1);
+        }
         
-//        if (FD_ISSET(sd, &tempfdset)) {
-//            cout << "Got past select() call and made it inside FD_ISSET" << endl;
+        if (FD_ISSET(sd, &tempfdset)) {
 			bytesReceived = recvfrom(sd, buffer, 1024, 0, (struct sockaddr*)&remoteAddr, &addrLen);
 			
 		    cout << "Received " << bytesReceived << " bytes." << endl;
 		    if(bytesReceived > 0) {
-		        buffer[bytesReceived] = 0;
+		        buffer[bytesReceived] = NULL;
+		        
 		        cout << "Message: " << buffer << endl;
-//		    }
+		        
+		        string fullString = buffer;
+		        istringstream iss(fullString);
+		        string command;
+		        int destination;
+		        
+		        iss >> command >> destination;
+		        
+		        if(command == "generate-packet") {
+		        	struct sockaddr_in servAddr2;
+		        	socklen_t remoteAddrLen = sizeof(servAddr2);
+	
+					memset((char*)&servAddr2, 0, sizeof(servAddr2));
+					servAddr2.sin_family = AF_INET;
+					servAddr2.sin_port = htons(thisNode->dataPort);
+		
+					struct hostent *tempStruct2;
+					if ((tempStruct2 = gethostbyname(thisNode->hostName.c_str())) == NULL) {
+						fprintf(stderr, "Error while getting host name\n");
+						exit(1);
+					}
+	
+					struct in_addr **ipAddress2;
+					ipAddress2 = (struct in_addr **) tempStruct2->h_addr_list;
+	
+					servAddr2.sin_addr.s_addr = inet_addr(inet_ntoa(*ipAddress2[0]));
+		        
+		        	//send message to data port
+		        	string temp = to_string(destination);	
+					strcpy(buffer, temp.c_str());
+		        	
+		        	if(sendto(sd, buffer, strlen(buffer), 0, (struct sockaddr*)&servAddr2, remoteAddrLen) == -1) {
+						perror("message sending failed");
+					}
+		        }
+		        
+		        else if(command == "create-link") {
+		        	createLink(destination);
+		        }
+		        
+		        else if(command == "remove-link") {
+		        	removeLink(destination);
+		        }
+		    }
 		}
     }
 }
 
 void *dataThread(void *dummy) {
-
-
+	
+	//Output the node
+	thisNode->outputNode();
+	
+	int destination;
+	
+	struct sockaddr_in myAddr;
+	struct sockaddr_in remoteAddr;
+	socklen_t addrLen = sizeof(remoteAddr);
+	int bytesReceived;
+	char buffer[1024];
+	
+	fd_set rfds;
+	
+	//Create the socket for the Node
+    int sd;
+    if((sd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        perror("Cannot create socket");
+        exit(1);
+    }
+    
+    FD_ZERO(&rfds);
+	FD_SET(sd, &rfds);
+    
+    memset((char*)&myAddr, 0, sizeof(myAddr));
+    myAddr.sin_family = AF_INET;
+    myAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    myAddr.sin_port = htons(thisNode->dataPort);
+    
+    //Bind socket to control port specified in input file and to all IP addresses so that it can listen to everyone
+    if(bind(sd, (struct sockaddr*)&myAddr, sizeof(myAddr)) < 0) {
+        perror("bind failure");
+        exit(1);
+    }
 
     while(true) {
-    
+    	cout << "Waiting on port " << thisNode->dataPort << endl;
+        
+        fd_set tempfdset;
+		FD_ZERO(&tempfdset);
+		tempfdset = rfds;
+		
+		if (select(sd+1, &tempfdset, NULL, NULL, NULL) == -1) {
+            perror("select: ");
+            exit(1);
+        }
+        
+        if (FD_ISSET(sd, &tempfdset)) {
+			bytesReceived = recvfrom(sd, buffer, 1024, 0, (struct sockaddr*)&remoteAddr, &addrLen);
+			
+		    cout << "Received " << bytesReceived << " bytes." << endl;
+		    if(bytesReceived > 0) {
+		        buffer[bytesReceived] = NULL;
+		        
+		        cout << "Message: " << buffer << endl;
+		        
+		        string fullString = buffer;
+		        istringstream iss(fullString);
+		        int destination;
+		        
+		        iss >> destination;
+		    }
+		}
     }
 }
 
@@ -215,7 +355,7 @@ int main(int argc, char* argv[]) {
 	        for(int i = 0; i < thisNode->neighborInfo.size(); i++) {
 	            if(counter == thisNode->neighborInfo.at(i)->nodeID) {
 	                
-	                std::istringstream ss1;
+					std::istringstream ss1;
 			        ss1.str(newString);
 			        ss1 >> nodeID >> hostName >> controlPort >> dataPort;
 			        
@@ -229,7 +369,6 @@ int main(int argc, char* argv[]) {
 	    }
 	}
 		
-		updateTable();
     //Create threads for the data and  control ports of the node
     int i=0;
 	pthread_t myThread;
