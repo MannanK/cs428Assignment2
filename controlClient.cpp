@@ -33,18 +33,19 @@ void passCommand(string command_, int source_, int destination_) {
 	combined.source = source_;
 	combined.destination = destination_;
 	
-	struct sockaddr_in myAddr;
-	struct sockaddr_in remoteAddr;
+	struct sockaddr_in myAddr, remoteAddr;
+	socklen_t remoteAddrLen = sizeof(remoteAddr);
 	
 	struct hostent *hostInfo;
 	struct sockaddr_in servAddr;
-	const char msg[] = "this is a test message";
+	char msg[1024];
 	
 	//Create the socket for the Node
-    int sd=0;
-    if((sd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+    int sd;
+    if((sd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
         perror("Cannot create socket");
         exit(1);
+        //printf("Socket created");
     }
     
     memset((char *)&myAddr, 0, sizeof(myAddr));
@@ -53,25 +54,47 @@ void passCommand(string command_, int source_, int destination_) {
 	myAddr.sin_port = htons(0);
     
     if (bind(sd, (struct sockaddr*)&myAddr, sizeof(myAddr)) < 0) {
-		perror("bind failed");
+		perror("binding failed");
 		exit(1);
 	} 
 	
 	memset((char*)&servAddr, 0, sizeof(servAddr));
 	servAddr.sin_family = AF_INET;
-	servAddr.sin_port = htons(nodes.at(source_)->controlPort);
+	servAddr.sin_port = htons(nodes.at(source_-1)->controlPort);
 	
-	hostInfo = gethostbyname(nodes.at(source_)->hostName.c_str());
+// THIS DOESN'T WORK
+	hostInfo = gethostbyname(nodes.at(source_-1)->hostName.c_str());
 	if(!hostInfo) {
-		fprintf(stderr, "address of %s could not be obtained", nodes.at(source_)->hostName);
+		fprintf(stderr, "address of %s could not be obtained", nodes.at(source_-1)->hostName);
 		exit(1);
 	}
 	
-	memcpy((void*)&servAddr.sin_addr, hostInfo->h_addr_list[0], hostInfo->h_length);
+	char str[INET_ADDRSTRLEN];
+	inet_ntop(AF_INET, &(hostInfo->h_addr_list[0]), str, INET_ADDRSTRLEN);
 	
-	if(sendto(sd, msg, strlen(msg), 0, (struct sockaddr*)&servAddr, sizeof(servAddr)) < 0) {
-		perror("message sending failed");
+	cout << str << endl;
+	
+	//original
+	//memcpy((void*)&servAddr.sin_addr, hostInfo->h_addr_list[0], hostInfo->h_length);
+	
+	if (inet_aton(str, &servAddr.sin_addr)==0) {
+		fprintf(stderr, "inet_aton() failed\n");
 		exit(1);
+	}
+//
+
+
+//THIS WORKS
+	char *server = "127.0.0.1";
+	if (inet_aton(server, &servAddr.sin_addr)==0) {
+		fprintf(stderr, "inet_aton() failed\n");
+		exit(1);
+	}
+//
+
+	sprintf(msg, "This is packet 1");
+	if(sendto(sd, msg, strlen(msg), 0, (struct sockaddr*)&servAddr, remoteAddrLen) == -1) {
+		perror("message sending failed");
 	}
 	close(sd);
 }

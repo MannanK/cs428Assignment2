@@ -41,13 +41,20 @@ void *controlThread(void *dummy) {
 	//Output the node
 	thisNode->outputNode();
 	
+/*	struct temp {
+		string command;
+		int source;
+		int destination;
+	} combined;
+*/
+	
 	struct sockaddr_in myAddr;
 	struct sockaddr_in remoteAddr;
 	socklen_t addrLen = sizeof(remoteAddr);
 	int bytesReceived;
 	unsigned char buffer[1024];
 	
-	fd_set rfds;
+//	fd_set rfds;
 	
 	//Create the socket for the Node
     int sd;
@@ -56,41 +63,41 @@ void *controlThread(void *dummy) {
         exit(1);
     }
     
-    FD_ZERO(&rfds);
-    FD_SET(0, &rfds);
-	FD_SET(sd, &rfds);
+//    FD_ZERO(&rfds);
+//	FD_SET(sd, &rfds);
     
     memset((char*)&myAddr, 0, sizeof(myAddr));
     myAddr.sin_family = AF_INET;
     myAddr.sin_addr.s_addr = htonl(INADDR_ANY);
     myAddr.sin_port = htons(thisNode->controlPort);
     
-    //Bind socket to control port specified in input file
+    //Bind socket to control port specified in input file and to all IP addresses so that it can listen to everyone
     if(bind(sd, (struct sockaddr*)&myAddr, sizeof(myAddr)) < 0) {
         perror("bind failure");
         exit(1);
     }
     
     while(true) {
-    
         cout << "Waiting on port " << thisNode->controlPort << endl;
         
-        fd_set tempfdset;
-		FD_ZERO(&tempfdset);
-		tempfdset = rfds;
+//        fd_set tempfdset;
+//		FD_ZERO(&tempfdset);
+//		tempfdset = rfds;
 		
-		if (select(sd+1, &tempfdset, NULL, NULL, NULL) == -1) {
-            perror("select: ");
-            exit(1);
-        }
+//		if (select(sd+1, &tempfdset, NULL, NULL, NULL) == -1) {
+//            perror("select: ");
+//            exit(1);
+//        }
         
-        if (FD_ISSET(sd, &tempfdset)) {
+//        if (FD_ISSET(sd, &tempfdset)) {
+//            cout << "Got past select() call and made it inside FD_ISSET" << endl;
 			bytesReceived = recvfrom(sd, buffer, 1024, 0, (struct sockaddr*)&remoteAddr, &addrLen);
+			
 		    cout << "Received " << bytesReceived << " bytes." << endl;
 		    if(bytesReceived > 0) {
 		        buffer[bytesReceived] = 0;
 		        cout << "Message: " << buffer << endl;
-		    }
+//		    }
 		}
     }
 }
@@ -157,8 +164,6 @@ int main(int argc, char* argv[]) {
 			    //thisNode->addNeighbor(stoi(newString));
 			    
             }
-            
-            
                 
             //Routing table is a 2D Vector, initially sets next hop and distance to -1
 			vector<int>data;
