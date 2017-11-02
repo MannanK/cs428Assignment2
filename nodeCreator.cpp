@@ -15,6 +15,7 @@
 #include <netdb.h>
 #include <time.h> 
 #include <errno.h>
+#include <math.h>
 
 #include "Node.h"
 
@@ -22,6 +23,31 @@ using namespace std;
 
 //The Node for this process
 Node* thisNode = new Node();
+
+string toBinary(int num) {
+	string binary = "";
+	for(int i = 7; i >= 0; i--) {
+		if(num >= pow(2, i)) {
+			binary.append("1");
+			num = num - pow(2, i);
+		}
+		else {
+			binary.append("0");
+		}
+	}
+	return binary;
+}
+
+int toInt(string binary) {
+	int num =0;
+	for(int i = 0; i < 8; i++) {
+		if(binary[7-i] == '1') {
+			num = num + pow(2, i);
+		}
+	}
+	return num;
+	
+}
 
 void updateTable() {
     //Reset routing table
@@ -40,8 +66,68 @@ void updateTable() {
     thisNode->outputNode();
 }
 
-//generate-packet command, send packet to destination node
+//Output the packet header info
+void printPacket(string packet){
+	cout << "Header" << endl;
+	cout << "Source ID: " << toInt(packet.substr(0, 8)) << endl;
+	cout << "Destination ID: " << toInt(packet.substr(8, 16)) << endl;
+	cout << "Packet ID: " << toInt(packet.substr(16, 24)) << endl;
+	cout << "TTL: " << toInt(packet.substr(24, 32)) << endl;
+	
+	cout << "Data" << endl;
+	packet.erase(0, 32);
+	for(int i = 0; i < packet.length(); i=i+8) {
+		cout << toInt(packet.substr(i, i+8)) << " -> ";
+	}
+	
+	cout << endl << endl;
+}
+
+//Recieve packet from a node and send it again
+void sendPacket(string dataPacket) {
+	//Update ttl
+	int ttl = toInt(dataPacket.substr(24,32));
+	ttl--;
+	
+	//Drop Packet if time to live expires
+	if(ttl == 0) {
+		cout << "Packet dropped" << endl;
+	}
+	
+	else {
+		//Replace ttl in packet
+		dataPacket.replace(24, 8, toBinary(ttl));
+		
+		//Add self to data forwarding path
+		dataPacket.append(toBinary(thisNode->nodeID));
+		printPacket(dataPacket);
+		
+	}
+	
+}
+
+ //generate-packet command, send packet to destination node
 void generate(int destination) {
+	string dataPacket = "";
+	
+	//Source Node ID
+	dataPacket.append(toBinary(thisNode->nodeID));
+	
+	//Destination Node ID
+	dataPacket.append(toBinary(destination));
+	
+	//PacketID
+	thisNode->packetsSent ++;
+	dataPacket.append(toBinary(thisNode->packetsSent));
+	
+	//TTL
+	dataPacket.append(toBinary(15));
+	
+	//Add self to data forwarding path
+	dataPacket.append(toBinary(thisNode->nodeID));
+	
+	printPacket(dataPacket);
+	sendPacket(dataPacket);
 
 }
 
@@ -263,6 +349,8 @@ void *dataThread(void *dummy) {
 		        int destination;
 		        
 		        iss >> destination;
+		        
+		        generate(destination);
 		    }
 		}
     }

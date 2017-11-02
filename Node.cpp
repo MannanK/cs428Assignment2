@@ -12,6 +12,7 @@ Node :: Node() {
 	hostName = "";
 	controlPort = -1;
 	dataPort = -1;
+	packetsSent = 0;
 }
 
 Node :: Node (int nodeID_, string hostname_, int controlPort_, int dataPort_) {
@@ -19,6 +20,7 @@ Node :: Node (int nodeID_, string hostname_, int controlPort_, int dataPort_) {
 	hostName = hostname_;
 	controlPort = controlPort_;
 	dataPort = dataPort_;
+	packetsSent = 0;
 }
 
 void Node :: addNeighbor(int neighborID) {

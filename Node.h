@@ -13,6 +13,7 @@ class Node {
 		string hostName;
 		int controlPort;
 		int dataPort;
+		int packetsSent;
 		vector<int> neighbors;
 		
 		vector<Node*> neighborInfo;
