@@ -24,6 +24,7 @@ using namespace std;
 //The Node for this process
 Node* thisNode = new Node();
 
+//Convert a number to an 8-bit binary string
 string toBinary(int num) {
 	string binary = "";
 	for(int i = 7; i >= 0; i--) {
@@ -38,6 +39,7 @@ string toBinary(int num) {
 	return binary;
 }
 
+//Convert an 8-bit binary string to a number
 int toInt(string binary) {
 	int num =0;
 	for(int i = 0; i < 8; i++) {
@@ -52,9 +54,16 @@ int toInt(string binary) {
 void updateTable() {
     //Reset routing table
     for(int i = 0; i < thisNode->routingTable.size(); i++) {
-        thisNode->routingTable.at(i).at(0) = i+1;
-        thisNode->routingTable.at(i).at(1) = -1;
-        thisNode->routingTable.at(i).at(2) = -1;
+    	if(thisNode->routingTable.at(i).at(0) == thisNode->nodeID) {
+        	thisNode->routingTable.at(i).at(0) = i+1;
+        	thisNode->routingTable.at(i).at(1) = -1;
+        	thisNode->routingTable.at(i).at(2) = 0;
+    	}
+		else {
+        	thisNode->routingTable.at(i).at(0) = i+1;
+        	thisNode->routingTable.at(i).at(1) = -1;
+        	thisNode->routingTable.at(i).at(2) = -1;
+		}
     }
     
     //Ensure all neighbors now 1 hop away
@@ -131,6 +140,7 @@ void generate(int destination) {
 
 }
 
+//Add a link to a Node, need to fetch information about newly connected node by exchanging distance vectors
 void createLink(int destination) {
 	Node* newDest = new Node();
 	newDest->nodeID = destination;
@@ -139,6 +149,7 @@ void createLink(int destination) {
 	thisNode->outputNode();
 }
 
+//Remove a link to a node, need to update the distance vectors
 void removeLink(int destination) {
 	for(int i=0; i < thisNode->neighborInfo.size(); i++) {
 		if(destination == thisNode->neighborInfo.at(i)->nodeID) {
@@ -152,9 +163,6 @@ void removeLink(int destination) {
 }
 
 void *controlThread(void *dummy) {
-
-	//Output the node
-	thisNode->outputNode();
 	
 	string command;
 	int destination;
@@ -188,37 +196,6 @@ void *controlThread(void *dummy) {
         exit(1);
     }
     
-/*
-
-	char * servhost; // full name of this host
-	ushort servport; // port assigned to this server
-
-    char hostName[128];
-	gethostname(hostName, sizeof(hostName));
-	
-	struct hostent *tempStruct;
-	if ((tempStruct = gethostbyname(hostName)) == NULL) {
-		fprintf(stderr, "Error while getting host name\n");
-		exit(1);
-	}
-	
-	servhost = tempStruct->h_name;
-
-	struct sockaddr_in portAddress;
-	socklen_t portAddressLength = sizeof(portAddress);
-	
-	if (getsockname(sd, (struct sockaddr*) &portAddress, &portAddressLength) == -1) {
-		fprintf(stderr, "Error while getting socket name\n");
-		exit(1);
-	}
-	
-	servport = ntohs(portAddress.sin_port);
-
-	// ready to accept requests
-	printf("admin: started server on '%s' at '%hu'\n", servhost, servport);
-	
-*/
-    
     while(true) {
         cout << "Waiting on port " << thisNode->controlPort << endl;
         
@@ -236,7 +213,7 @@ void *controlThread(void *dummy) {
 			
 		    cout << "Received " << bytesReceived << " bytes." << endl;
 		    if(bytesReceived > 0) {
-		        buffer[bytesReceived] = NULL;
+		        buffer[bytesReceived] = 0;
 		        
 		        cout << "Message: " << buffer << endl;
 		        
@@ -289,9 +266,6 @@ void *controlThread(void *dummy) {
 
 void *dataThread(void *dummy) {
 	
-	//Output the node
-	thisNode->outputNode();
-	
 	int destination;
 	
 	struct sockaddr_in myAddr;
@@ -340,7 +314,7 @@ void *dataThread(void *dummy) {
 			
 		    cout << "Received " << bytesReceived << " bytes." << endl;
 		    if(bytesReceived > 0) {
-		        buffer[bytesReceived] = NULL;
+		        buffer[bytesReceived] = 0;
 		        
 		        cout << "Message: " << buffer << endl;
 		        
@@ -456,14 +430,15 @@ int main(int argc, char* argv[]) {
 	        counter++;
 	    }
 	}
-		
+	
+	thisNode -> outputNode();
+	updateTable();
+	
     //Create threads for the data and  control ports of the node
     int i=0;
 	pthread_t myThread;
 	pthread_create(&myThread, NULL, controlThread, &i);
-	//pthread_join(myThread, NULL);
-	pthread_create(&myThread, NULL, dataThread, &i);
-	//pthread_join(myThread, NULL);		
+	pthread_create(&myThread, NULL, dataThread, &i);	
 	
 	pthread_join(myThread, NULL);
 }
