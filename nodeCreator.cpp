@@ -224,6 +224,8 @@ void *controlThread(void *dummy) {
 		        
 		        iss >> command >> destination;
 		        
+		        //send message to the data port, telling it to generate a packet to the destination nodeID
+		        //this goes to *dataThread()
 		        if(command == "generate-packet") {
 		        	struct sockaddr_in servAddr2;
 		        	socklen_t remoteAddrLen = sizeof(servAddr2);
