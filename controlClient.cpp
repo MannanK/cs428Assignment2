@@ -36,7 +36,6 @@ void passCommand(string command, int source, int destination) {
     if((sd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
         perror("Cannot create socket");
         exit(1);
-        //printf("Socket created");
     }
     
     memset((char *)&myAddr, 0, sizeof(myAddr));
@@ -52,31 +51,8 @@ void passCommand(string command, int source, int destination) {
 	memset((char*)&servAddr, 0, sizeof(servAddr));
 	servAddr.sin_family = AF_INET;
 	servAddr.sin_port = htons(nodes.at(source-1)->controlPort);
-	
-/* THIS DOESN'T WORK
-	hostInfo = gethostbyname(nodes.at(source_-1)->hostName.c_str());
-	if(!hostInfo) {
-		fprintf(stderr, "address of %s could not be obtained", nodes.at(source_-1)->hostName);
-		exit(1);
-	}
-	
-	char str[INET_ADDRSTRLEN];
-	inet_ntop(AF_INET, &(hostInfo->h_addr_list[0]), str, INET_ADDRSTRLEN);
-	
-	cout << str << endl;
-	
-	//original
-	//memcpy((void*)&servAddr.sin_addr, hostInfo->h_addr_list[0], hostInfo->h_length);
-	
-	if (inet_aton(str, &servAddr.sin_addr)==0) {
-		fprintf(stderr, "inet_aton() failed\n");
-		exit(1);
-	}
-*/
 
-// ----------------------------------------------
-
-//get the IP address of servhost
+	//get the IP address of servhost
 	struct hostent *tempStruct;
 	if ((tempStruct = gethostbyname(nodes.at(source-1)->hostName.c_str())) == NULL) {
 		fprintf(stderr, "Error while getting host name\n");
@@ -87,16 +63,6 @@ void passCommand(string command, int source, int destination) {
     ipAddress = (struct in_addr **) tempStruct->h_addr_list;
 	
 	servAddr.sin_addr.s_addr = inet_addr(inet_ntoa(*ipAddress[0]));
-	
-// ----------------------------------------------
-
-/*	THIS WORKS
-	char *server = "127.0.0.1";
-	if (inet_aton(server, &servAddr.sin_addr)==0) {
-		fprintf(stderr, "inet_aton() failed\n");
-		exit(1);
-	}
-*/
 
 	string temp = command + " " + to_string(destination);	
 	strcpy(msg, temp.c_str());
@@ -131,11 +97,6 @@ void passCommand(string command, int source, int destination) {
 		}
 	}
 
-/*	sprintf(msg, "This is packet 1");
-	if(sendto(sd, msg, strlen(msg), 0, (struct sockaddr*)&servAddr, remoteAddrLen) == -1) {
-		perror("message sending failed");
-	}
-*/
 	close(sd);
 }
 

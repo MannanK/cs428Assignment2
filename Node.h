@@ -19,7 +19,6 @@ class Node {
 		vector<Node*> neighborInfo;
 		vector<vector<int>> routingTable;
 		
-		
 		void addNeighbor(int neighborID);
 		void removeNeighbor(int neighborID);
 		void outputNode();

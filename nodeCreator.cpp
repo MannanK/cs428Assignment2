@@ -51,8 +51,53 @@ int toInt(string binary) {
 	
 }
 
-void updateTable() {
+//Convert this Node's routing table to a string to be sent to other nodes
+string toRoutingString() {
+    string myString = "";
+    for(int i = 0; i < thisNode->routingTable.size(); i++) {
+        for(int j = 0; j < 3; j++) {
+            if(thisNode->routingTable.at(i).at(j) == -1) {
+                myString.append("--------");
+            }
+            else {
+                myString.append(toBinary(thisNode->routingTable.at(i).at(j)));
+            }
+        }
+    }
+    return myString;
+}
+
+//Convert the routing string to a 2D vector representing the routingTable
+vector <vector<int>> toRoutingVector(string routingString) {
+    vector <vector<int>> routingTable;
+    int counter = 0;
+    int i = 0;
+    while(i < routingString.length()) {
+        vector<int> temp;
+        for(int j = 0; j < 3; j++) {
+            //cout << routingString.substr(i, 8) <<  " " << i << " " << i+8 <<endl;
+            if(routingString.substr(i, 8) == "--------") {
+                cout << "here" << endl;
+                temp.push_back(-1);
+            }
+            else {
+                temp.push_back(toInt(routingString.substr(i, 8)));
+            }
+            i = i+8;
+        }
+        
+        routingTable.push_back(temp);
+        counter++;
+    }    
+    
+	
+	return routingTable;
+}
+
+//Initial version of a Node's table. Adds info about neighbors, but keeps everything else blank'
+void createTable() {
     //Reset routing table
+    //Initially creates the routing table with information about this node's neighbors
     for(int i = 0; i < thisNode->routingTable.size(); i++) {
     	if(thisNode->routingTable.at(i).at(0) == thisNode->nodeID) {
         	thisNode->routingTable.at(i).at(0) = i+1;
@@ -70,6 +115,88 @@ void updateTable() {
     for(int i = 0; i < thisNode->neighborInfo.size(); i++) {
         thisNode->routingTable.at(thisNode->neighborInfo.at(i)->nodeID-1).at(1) = thisNode->neighborInfo.at(i)->nodeID;
         thisNode->routingTable.at(thisNode->neighborInfo.at(i)->nodeID-1).at(2) = 1;
+    }
+    
+}
+
+//Send this node's routing table to all of its neighbors
+void sendTable() {
+    char buffer[1024]; 
+
+    struct sockaddr_in myAddr;
+    
+    //Create the socket for the Node
+    int sd;
+    if((sd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        perror("Cannot create socket");
+        exit(1);
+    }
+    
+    memset((char *)&myAddr, 0, sizeof(myAddr));
+	myAddr.sin_family = AF_INET;
+	myAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	myAddr.sin_port = htons(0);
+    
+    if (bind(sd, (struct sockaddr*)&myAddr, sizeof(myAddr)) < 0) {
+		perror("binding failed");
+		exit(1);
+	}
+
+    for(int i=0; i < thisNode->neighborInfo.size(); i++) {
+        struct sockaddr_in servAddr;
+        socklen_t remoteAddrLen = sizeof(servAddr);
+
+        memset((char*)&servAddr, 0, sizeof(servAddr));
+        servAddr.sin_family = AF_INET;
+        servAddr.sin_port = htons(thisNode->neighborInfo.at(i)->controlPort);
+
+        struct hostent *tempStruct;
+        if ((tempStruct = gethostbyname(thisNode->neighborInfo.at(i)->hostName.c_str())) == NULL) {
+	        fprintf(stderr, "Error while getting host name\n");
+	        exit(1);
+        }
+
+        struct in_addr **ipAddress;
+        ipAddress = (struct in_addr **) tempStruct->h_addr_list;
+
+        servAddr.sin_addr.s_addr = inet_addr(inet_ntoa(*ipAddress[0]));
+
+        //send message to data port
+        string temp = "table " + toRoutingString();
+        strcpy(buffer, temp.c_str());
+        //this leaves 1019 bytes for the routing table
+        //cout << "Size of routing table: " << sizeof(thisNode->routingTable) << endl;
+        //memcpy(&buffer+6, thisNode->routingTable.data(), sizeof(thisNode->routingTable));
+
+        if(sendto(sd, buffer, strlen(buffer), 0, (struct sockaddr*)&servAddr, remoteAddrLen) == -1) {
+	        perror("message sending failed");
+        }
+    }
+    
+    close(sd);
+}
+
+//Update our current routing table based on the routing table we just received
+//Do all the math, Djikstra's
+void updateTable(vector<vector<int>> routingTable) {
+    
+    //Loop through the received routing table
+    for(int i = 0; i < routingTable.size(); i++) {
+    
+        //If the distance to a node in the current routing table is greater than that in the received routing table, or if the distance is unknown, update your table
+        //If the received routing table has a distance to a node of -1 never update
+        if((thisNode->routingTable.at(i).at(2) > routingTable.at(i).at(2) || thisNode->routingTable.at(i).at(2) == -1) && routingTable.at(i).at(2) != -1) {
+            int j = 0;
+            //Use this to determine the node that passed the distance vector for next hop
+            for(j; j < routingTable.size(); j++) {
+                if(routingTable.at(j).at(2) == 0) {
+                    break;
+                }
+            }
+            //Update info
+            thisNode->routingTable.at(i).at(1) = j+1;
+            thisNode->routingTable.at(i).at(2) = routingTable.at(i).at(2) + 1;
+        }
     }
     
     thisNode->outputNode();
@@ -146,6 +273,10 @@ void createLink(int destination) {
 	newDest->nodeID = destination;
 	thisNode->neighborInfo.push_back(newDest);
 	
+	//Update routing table, should distance is 1 since it is a neighbor
+	//thisNode->routingTable.at(destination-1).at(1) = destination;
+	//thisNode->routingTable.at(destination-1).at(2) = 1;
+	
 	thisNode->outputNode();
 }
 
@@ -157,6 +288,10 @@ void removeLink(int destination) {
 			break;
 		}
 	}
+	
+	//Update routing table, nullify the link using -1, should get properly updated by next update of routing table
+	thisNode->routingTable.at(destination-1).at(1) = -1;
+	thisNode->routingTable.at(destination-1).at(2) = -1;
 	
 	thisNode->outputNode();
 	//update routing table
@@ -203,10 +338,16 @@ void *controlThread(void *dummy) {
 		FD_ZERO(&tempfdset);
 		tempfdset = rfds;
 		
-		if (select(sd+1, &tempfdset, NULL, NULL, NULL) == -1) {
+		struct timeval tv;
+		tv.tv_sec = 5;
+		
+		if (select(sd+1, &tempfdset, NULL, NULL, &tv) == -1) {
             perror("select: ");
             exit(1);
         }
+        
+        //no message was received from any nodes or control client, so now we send out our routing table
+        sendTable();
         
         if (FD_ISSET(sd, &tempfdset)) {
 			bytesReceived = recvfrom(sd, buffer, 1024, 0, (struct sockaddr*)&remoteAddr, &addrLen);
@@ -220,50 +361,62 @@ void *controlThread(void *dummy) {
 		        string fullString = buffer;
 		        istringstream iss(fullString);
 		        string command;
-		        int destination;
 		        
-		        iss >> command >> destination;
-		        
-		        //send message to the data port, telling it to generate a packet to the destination nodeID
-		        //this goes to *dataThread()
-		        if(command == "generate-packet") {
-		        	struct sockaddr_in servAddr2;
-		        	socklen_t remoteAddrLen = sizeof(servAddr2);
-	
-					memset((char*)&servAddr2, 0, sizeof(servAddr2));
-					servAddr2.sin_family = AF_INET;
-					servAddr2.sin_port = htons(thisNode->dataPort);
-		
-					struct hostent *tempStruct2;
-					if ((tempStruct2 = gethostbyname(thisNode->hostName.c_str())) == NULL) {
-						fprintf(stderr, "Error while getting host name\n");
-						exit(1);
-					}
-	
-					struct in_addr **ipAddress2;
-					ipAddress2 = (struct in_addr **) tempStruct2->h_addr_list;
-	
-					servAddr2.sin_addr.s_addr = inet_addr(inet_ntoa(*ipAddress2[0]));
-		        
-		        	//send message to data port
-		        	string temp = to_string(destination);	
-					strcpy(buffer, temp.c_str());
+		        if((iss >> command) && command == "table") {
+		        	//everything in buffer from index 6 onwards will be a routing table
+		        	string routingString;
+		        	iss >> routingString;
 		        	
-		        	if(sendto(sd, buffer, strlen(buffer), 0, (struct sockaddr*)&servAddr2, remoteAddrLen) == -1) {
-						perror("message sending failed");
-					}
+		        	updateTable(toRoutingVector(routingString));
 		        }
 		        
-		        else if(command == "create-link") {
-		        	createLink(destination);
-		        }
-		        
-		        else if(command == "remove-link") {
-		        	removeLink(destination);
+		        else {
+		        	int destination;
+				    iss >> destination;
+				    
+				    //send message to the data port, telling it to generate a packet to the destination nodeID
+				    //this goes to *dataThread()
+				    if(command == "generate-packet") {
+				    	struct sockaddr_in servAddr2;
+				    	socklen_t remoteAddrLen = sizeof(servAddr2);
+	
+						memset((char*)&servAddr2, 0, sizeof(servAddr2));
+						servAddr2.sin_family = AF_INET;
+						servAddr2.sin_port = htons(thisNode->dataPort);
+		
+						struct hostent *tempStruct2;
+						if ((tempStruct2 = gethostbyname(thisNode->hostName.c_str())) == NULL) {
+							fprintf(stderr, "Error while getting host name\n");
+							exit(1);
+						}
+	
+						struct in_addr **ipAddress2;
+						ipAddress2 = (struct in_addr **) tempStruct2->h_addr_list;
+	
+						servAddr2.sin_addr.s_addr = inet_addr(inet_ntoa(*ipAddress2[0]));
+				    
+				    	//send message to data port
+				    	string temp = to_string(destination);	
+						strcpy(buffer, temp.c_str());
+				    	
+				    	if(sendto(sd, buffer, strlen(buffer), 0, (struct sockaddr*)&servAddr2, remoteAddrLen) == -1) {
+							perror("message sending failed");
+						}
+				    }
+				    
+				    else if(command == "create-link") {
+				    	createLink(destination);
+				    }
+				    
+				    else if(command == "remove-link") {
+				    	removeLink(destination);
+				    }
 		        }
 		    }
 		}
     }
+    
+    close(sd);
 }
 
 void *dataThread(void *dummy) {
@@ -330,6 +483,8 @@ void *dataThread(void *dummy) {
 		    }
 		}
     }
+    
+    close(sd);
 }
 
 int main(int argc, char* argv[]) {
@@ -433,8 +588,7 @@ int main(int argc, char* argv[]) {
 	    }
 	}
 	
-	thisNode -> outputNode();
-	updateTable();
+	createTable();
 	
     //Create threads for the data and  control ports of the node
     int i=0;
