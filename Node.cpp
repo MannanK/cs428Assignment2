@@ -63,6 +63,5 @@ void Node :: outputNode() {
 	for(i = 0; i < routingTable.size(); i++) {
 		cout << "(" << routingTable.at(i).at(0) << ", " << routingTable.at(i).at(1) << ", " << routingTable.at(i).at(2) << ")" << endl;
 	}
-	cout << endl;
 	
 }

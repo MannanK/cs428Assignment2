@@ -25,6 +25,9 @@ using namespace std;
 Node* thisNode = new Node();
 pthread_mutex_t mutex1 = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex2 = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex3 = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex4 = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex5 = PTHREAD_MUTEX_INITIALIZER;
 
 //Convert a number to an 8-bit binary string
 string toBinary(int num) {
@@ -55,6 +58,7 @@ int toInt(string binary) {
 
 //Convert this Node's routing table to a string to be sent to other nodes
 string toRoutingString() {
+    //pthread_mutex_lock(&mutex4);
     string myString = "";
     for(int i = 0; i < thisNode->routingTable.size(); i++) {
         for(int j = 0; j < 3; j++) {
@@ -66,11 +70,13 @@ string toRoutingString() {
             }
         }
     }
+    //pthread_mutex_lock(&mutex4);
     return myString;
 }
 
 //Convert the routing string to a 2D vector representing the routingTable
 vector <vector<int>> toRoutingVector(string routingString) {
+    //pthread_mutex_lock(&mutex5);
     vector <vector<int>> routingTable;
     int counter = 0;
     int i = 0;
@@ -91,8 +97,30 @@ vector <vector<int>> toRoutingVector(string routingString) {
         counter++;
     }    
     
-	
+	//pthread_mutex_lock(&mutex5);
 	return routingTable;
+}
+
+//Output the packet header info
+void printPacket(string packet){
+    cout << "--------PACKET RECEIVED---------" << endl;
+	cout << "Header" << endl;
+	cout << "Source ID: " << toInt(packet.substr(0, 8)) << endl;
+	cout << "Destination ID: " << toInt(packet.substr(8, 8)) << endl;
+	cout << "Packet ID: " << toInt(packet.substr(16, 8)) << endl;
+	cout << "TTL: " << toInt(packet.substr(24, 8)) << endl;
+	
+	cout << "Data" << endl;
+	
+	cout << toInt(packet.substr(32, 8));
+	
+	packet.erase(0, 40);
+	for(int i = 0; i < packet.length(); i=i+8) {
+		cout << " -> " << toInt(packet.substr(i, 8));
+	}
+	
+	cout << endl;
+	cout << "--------------------------------" << endl << endl;
 }
 
 //Initial version of a Node's table. Adds info about neighbors, but keeps everything else blank'
@@ -122,7 +150,7 @@ void createTable() {
 
 //Send this node's routing table to all of its neighbors
 void sendTable() {
-    //pthread_mutex_lock( &mutex1 );
+    pthread_mutex_lock( &mutex1 );
     char buffer[1024]; 
 
     struct sockaddr_in myAddr;
@@ -178,13 +206,13 @@ void sendTable() {
     }
     
     close(sd);
-    //pthread_mutex_unlock( &mutex1 );
+    pthread_mutex_unlock( &mutex1 );
 }
 
 //Update our current routing table based on the routing table we just received
 //Do all the math, Djikstra's
 void updateTable(vector<vector<int>> routingTable) {
-    //pthread_mutex_lock( &mutex2 ); 
+    pthread_mutex_lock( &mutex2 ); 
     
 //    cout << "THIS NODE" << endl;
 //    thisNode->outputNode();
@@ -216,35 +244,20 @@ void updateTable(vector<vector<int>> routingTable) {
     
 //    cout << "----------------------------------" << endl;
 //    thisNode->outputNode();
-//    pthread_mutex_unlock( &mutex2 );
+    pthread_mutex_unlock( &mutex2 );
 //    cout << "----------------------------------" << endl;
-}
-
-//Output the packet header info
-void printPacket(string packet){
-	cout << "Header" << endl;
-	cout << "Source ID: " << toInt(packet.substr(0, 8)) << endl;
-	cout << "Destination ID: " << toInt(packet.substr(8, 8)) << endl;
-	cout << "Packet ID: " << toInt(packet.substr(16, 8)) << endl;
-	cout << "TTL: " << toInt(packet.substr(24, 8)) << endl;
-	
-	cout << "Data" << endl;
-	
-	cout << toInt(packet.substr(32, 8));
-	
-	packet.erase(0, 40);
-	for(int i = 0; i < packet.length(); i=i+8) {
-		cout << " -> " << toInt(packet.substr(i, 8));
-	}
-	
-	cout << endl << endl;
 }
 
 //Recieve packet from a node and send it again
 void sendPacket(string dataPacket) {
 	//Update ttl
 	int ttl = toInt(dataPacket.substr(24,8));
+	
+	int properLength = 32 + 8*(15-ttl);
+	dataPacket.erase(properLength, dataPacket.length());
+	
 	ttl--;
+	
 	
 	//Drop Packet if time to live expires
 	if(ttl == 0) {
@@ -252,6 +265,7 @@ void sendPacket(string dataPacket) {
 	}
 	
 	else {
+	    pthread_mutex_lock(&mutex3);
 		//Replace ttl in packet
 		dataPacket.replace(24, 8, toBinary(ttl));
 		
@@ -260,6 +274,7 @@ void sendPacket(string dataPacket) {
 		//printPacket(dataPacket);
 		
 		int destination = toInt(dataPacket.substr(8, 8));
+		
 		int nextHop = thisNode->routingTable.at(destination-1).at(1);
 		int nextPort;
 		string nextHost;
@@ -271,8 +286,8 @@ void sendPacket(string dataPacket) {
 		    }
 		}
 		
-		cout << "Node " << thisNode->nodeID << " forwarding to " << nextHop << " to get to node " << destination << "." << endl;
-		
+		cout << "Node " << thisNode->nodeID << " forwarding to " << nextHop << " to get to node " << destination << "." << endl << endl;
+        pthread_mutex_unlock(&mutex3);
 		char buffer[1024];
         struct sockaddr_in myAddr;
     
@@ -418,8 +433,7 @@ void *controlThread(void *dummy) {
         exit(1);
     }
     
-    sendTable();
-    
+    int counter = 0;
     while(true) {
         //cout << "Waiting on port " << thisNode->controlPort << endl;
         
@@ -430,12 +444,19 @@ void *controlThread(void *dummy) {
 		tempfdset = rfds;
 		
 		struct timeval tv;
-		tv.tv_sec = 5;
+		tv.tv_sec = 1;
 		
 		if (select(sd+1, &tempfdset, NULL, NULL, &tv) == -1) {
             perror("select: ");
             exit(1);
         }
+        
+        if(counter == 5) {
+            //thisNode->outputNode();
+            counter=0;
+            sendTable();
+        } 
+        
         
         if (FD_ISSET(sd, &tempfdset)) {
 			bytesReceived = recvfrom(sd, buffer, 1024, 0, (struct sockaddr*)&remoteAddr, &addrLen);
@@ -443,6 +464,9 @@ void *controlThread(void *dummy) {
 		    if(bytesReceived > 0) {
 		        string fullString = buffer;
 		        istringstream iss(fullString);
+		        
+		        //cout <<  "full string: " << fullString << endl;
+		        
 		        string command;
 		        iss >> command;
 		        //cout << fullString << endl;
@@ -462,6 +486,8 @@ void *controlThread(void *dummy) {
 				    //send message to the data port, telling it to generate a packet to the destination nodeID
 				    //this goes to *dataThread()
 				    if(command == "generate-packet") {
+				        //cout << destination << endl;
+				        
 				        //cout << "In the control thread" << endl;
 				    	struct sockaddr_in servAddr2;
 				    	socklen_t remoteAddrLen = sizeof(servAddr2);
@@ -500,14 +526,14 @@ void *controlThread(void *dummy) {
 		        }
 		    }
 		    
-		    sendTable();
 		}
 		
-		else {
-		    //no message was received from any nodes or control client, so now we send out our routing table
-		    cout << "got to select else statement" << endl;
-            sendTable();
-		}
+//		else {
+//		    //no message was received from any nodes or control client, so now we send out our routing table
+//		    cout << "got to select else statement" << endl;
+//            sendTable();
+//		}
+		counter++;
     }
     
     close(sd);
@@ -521,7 +547,6 @@ void *dataThread(void *dummy) {
 	struct sockaddr_in remoteAddr;
 	socklen_t addrLen = sizeof(remoteAddr);
 	int bytesReceived;
-	char buffer[1024];
 	
 	fd_set rfds;
 	
@@ -549,6 +574,7 @@ void *dataThread(void *dummy) {
     while(true) {
     	//cout << "Waiting on port " << thisNode->dataPort << endl;
         
+        char buffer[1024];
         fd_set tempfdset;
 		FD_ZERO(&tempfdset);
 		tempfdset = rfds;
@@ -570,7 +596,14 @@ void *dataThread(void *dummy) {
 		        	int destination = toInt(fullString.substr(8,8));
 		        	if(destination == thisNode->nodeID) {
 		        	    //this is the node that should receive the packets
-		        	    fullString.append(toBinary(destination));
+		        	
+		        	    
+	        	    	int ttl = toInt(fullString.substr(24,8));
+                        int properLength = 32 + 8*(15-ttl);
+                        fullString.erase(properLength, fullString.length());
+
+                        fullString.append(toBinary(destination));
+	
 		        	    printPacket(fullString);
 		        	}
 		        	
@@ -692,7 +725,9 @@ int main(int argc, char* argv[]) {
 	}
 	
 	createTable();
-	
+	cout << "--------------NODE INFO--------------" << endl;
+	thisNode->outputNode();
+	cout << "-------------------------------------" << endl << endl;
     //Create threads for the data and  control ports of the node
     int i=0;
 	pthread_t myThread;

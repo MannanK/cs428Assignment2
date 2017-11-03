@@ -60,18 +60,20 @@ void passCommand(string command, int source, int destination) {
 	}
 	
 	struct in_addr **ipAddress;
-    ipAddress = (struct in_addr **) tempStruct->h_addr_list;
+    	ipAddress = (struct in_addr **) tempStruct->h_addr_list;
 	
 	servAddr.sin_addr.s_addr = inet_addr(inet_ntoa(*ipAddress[0]));
 
-	string temp = command + " " + to_string(destination);	
-	strcpy(msg, temp.c_str());
-
-	if(sendto(sd, msg, strlen(msg), 0, (struct sockaddr*)&servAddr, remoteAddrLen) == -1) {
-		perror("message sending failed");
+	if(command == "generate-packet") {
+	    string temp = "generate-packet " + to_string(destination) + " ";	
+	    strcpy(msg, temp.c_str());
+	
+	    if(sendto(sd, msg, strlen(msg), 0, (struct sockaddr*)&servAddr, remoteAddrLen) == -1) {
+		    perror("message sending failed");
+	    }
 	}
 	
-	if(command != "generate-packet") {
+	else {
 		struct sockaddr_in servAddr2;
 	
 		memset((char*)&servAddr2, 0, sizeof(servAddr2));
