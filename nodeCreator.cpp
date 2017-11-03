@@ -23,6 +23,8 @@ using namespace std;
 
 //The Node for this process
 Node* thisNode = new Node();
+pthread_mutex_t mutex1 = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex2 = PTHREAD_MUTEX_INITIALIZER;
 
 //Convert a number to an 8-bit binary string
 string toBinary(int num) {
@@ -77,7 +79,6 @@ vector <vector<int>> toRoutingVector(string routingString) {
         for(int j = 0; j < 3; j++) {
             //cout << routingString.substr(i, 8) <<  " " << i << " " << i+8 <<endl;
             if(routingString.substr(i, 8) == "--------") {
-                cout << "here" << endl;
                 temp.push_back(-1);
             }
             else {
@@ -121,6 +122,7 @@ void createTable() {
 
 //Send this node's routing table to all of its neighbors
 void sendTable() {
+    //pthread_mutex_lock( &mutex1 );
     char buffer[1024]; 
 
     struct sockaddr_in myAddr;
@@ -143,6 +145,8 @@ void sendTable() {
 	}
 
     for(int i=0; i < thisNode->neighborInfo.size(); i++) {
+        //cout << "node " << thisNode->nodeID << " sending table to node " << thisNode->neighborInfo.at(i)->nodeID << endl;
+    
         struct sockaddr_in servAddr;
         socklen_t remoteAddrLen = sizeof(servAddr);
 
@@ -165,27 +169,38 @@ void sendTable() {
         string temp = "table " + toRoutingString();
         strcpy(buffer, temp.c_str());
         //this leaves 1019 bytes for the routing table
-        //cout << "Size of routing table: " << sizeof(thisNode->routingTable) << endl;
-        //memcpy(&buffer+6, thisNode->routingTable.data(), sizeof(thisNode->routingTable));
 
         if(sendto(sd, buffer, strlen(buffer), 0, (struct sockaddr*)&servAddr, remoteAddrLen) == -1) {
 	        perror("message sending failed");
         }
+        
+        //cout << "sent" << endl << "------------------------------------------" << endl;
     }
     
     close(sd);
+    //pthread_mutex_unlock( &mutex1 );
 }
 
 //Update our current routing table based on the routing table we just received
 //Do all the math, Djikstra's
 void updateTable(vector<vector<int>> routingTable) {
+    //pthread_mutex_lock( &mutex2 ); 
     
+//    cout << "THIS NODE" << endl;
+//    thisNode->outputNode();
+    
+//    cout << "RECEIVED ROUTING TABLE"<< endl;
+//	for(int i = 0; i < routingTable.size(); i++) {
+//		cout << "(" << routingTable.at(i).at(0) << ", " << routingTable.at(i).at(1) << ", " << routingTable.at(i).at(2) << ")" << endl;
+//	}
+	
+	//sleep(1);
     //Loop through the received routing table
     for(int i = 0; i < routingTable.size(); i++) {
     
         //If the distance to a node in the current routing table is greater than that in the received routing table, or if the distance is unknown, update your table
         //If the received routing table has a distance to a node of -1 never update
-        if((thisNode->routingTable.at(i).at(2) > routingTable.at(i).at(2) || thisNode->routingTable.at(i).at(2) == -1) && routingTable.at(i).at(2) != -1) {
+        if((thisNode->routingTable.at(i).at(2) > routingTable.at(i).at(2) || thisNode->routingTable.at(i).at(2) == -1) && routingTable.at(i).at(2) > 0) {
             int j = 0;
             //Use this to determine the node that passed the distance vector for next hop
             for(j; j < routingTable.size(); j++) {
@@ -199,21 +214,27 @@ void updateTable(vector<vector<int>> routingTable) {
         }
     }
     
-    thisNode->outputNode();
+//    cout << "----------------------------------" << endl;
+//    thisNode->outputNode();
+//    pthread_mutex_unlock( &mutex2 );
+//    cout << "----------------------------------" << endl;
 }
 
 //Output the packet header info
 void printPacket(string packet){
 	cout << "Header" << endl;
 	cout << "Source ID: " << toInt(packet.substr(0, 8)) << endl;
-	cout << "Destination ID: " << toInt(packet.substr(8, 16)) << endl;
-	cout << "Packet ID: " << toInt(packet.substr(16, 24)) << endl;
-	cout << "TTL: " << toInt(packet.substr(24, 32)) << endl;
+	cout << "Destination ID: " << toInt(packet.substr(8, 8)) << endl;
+	cout << "Packet ID: " << toInt(packet.substr(16, 8)) << endl;
+	cout << "TTL: " << toInt(packet.substr(24, 8)) << endl;
 	
 	cout << "Data" << endl;
-	packet.erase(0, 32);
+	
+	cout << toInt(packet.substr(32, 8));
+	
+	packet.erase(0, 40);
 	for(int i = 0; i < packet.length(); i=i+8) {
-		cout << toInt(packet.substr(i, i+8)) << " -> ";
+		cout << " -> " << toInt(packet.substr(i, 8));
 	}
 	
 	cout << endl << endl;
@@ -222,7 +243,7 @@ void printPacket(string packet){
 //Recieve packet from a node and send it again
 void sendPacket(string dataPacket) {
 	//Update ttl
-	int ttl = toInt(dataPacket.substr(24,32));
+	int ttl = toInt(dataPacket.substr(24,8));
 	ttl--;
 	
 	//Drop Packet if time to live expires
@@ -236,14 +257,77 @@ void sendPacket(string dataPacket) {
 		
 		//Add self to data forwarding path
 		dataPacket.append(toBinary(thisNode->nodeID));
-		printPacket(dataPacket);
+		//printPacket(dataPacket);
 		
+		int destination = toInt(dataPacket.substr(8, 8));
+		int nextHop = thisNode->routingTable.at(destination-1).at(1);
+		int nextPort;
+		string nextHost;
+		for(int i = 0; i < thisNode->neighborInfo.size(); i++) {
+		    if(nextHop == thisNode->neighborInfo.at(i)->nodeID) {
+		        nextPort = thisNode->neighborInfo.at(i)->dataPort;
+		        nextHost = thisNode->neighborInfo.at(i)->hostName;
+		        break;
+		    }
+		}
+		
+		cout << "Node " << thisNode->nodeID << " forwarding to " << nextHop << " to get to node " << destination << "." << endl;
+		
+		char buffer[1024];
+        struct sockaddr_in myAddr;
+    
+        //Create the socket for the Node
+        int sd;
+        if((sd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+            perror("Cannot create socket");
+            exit(1);
+        }
+        
+        memset((char *)&myAddr, 0, sizeof(myAddr));
+	    myAddr.sin_family = AF_INET;
+	    myAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	    myAddr.sin_port = htons(0);
+        
+        if (bind(sd, (struct sockaddr*)&myAddr, sizeof(myAddr)) < 0) {
+		    perror("binding failed");
+		    exit(1);
+	    }
+		
+		struct sockaddr_in servAddr;
+        socklen_t remoteAddrLen = sizeof(servAddr);
+
+        memset((char*)&servAddr, 0, sizeof(servAddr));
+        servAddr.sin_family = AF_INET;
+        servAddr.sin_port = htons(nextPort);
+
+        struct hostent *tempStruct;
+        if ((tempStruct = gethostbyname(nextHost.c_str())) == NULL) {
+	        fprintf(stderr, "Error while getting host name\n");
+	        exit(1);
+        }
+
+        struct in_addr **ipAddress;
+        ipAddress = (struct in_addr **) tempStruct->h_addr_list;
+
+        servAddr.sin_addr.s_addr = inet_addr(inet_ntoa(*ipAddress[0]));
+
+        //send message to data port
+        strcpy(buffer, dataPacket.c_str());
+        //this leaves 1019 bytes for the routing table
+
+        if(sendto(sd, buffer, strlen(buffer), 0, (struct sockaddr*)&servAddr, remoteAddrLen) == -1) {
+	        perror("message sending failed");
+        }
+        
+        close(sd);
 	}
 	
 }
 
  //generate-packet command, send packet to destination node
 void generate(int destination) {
+
+    cout << "Sending from " << thisNode->nodeID << " to " << destination << endl;
 	string dataPacket = "";
 	
 	//Source Node ID
@@ -259,10 +343,7 @@ void generate(int destination) {
 	//TTL
 	dataPacket.append(toBinary(15));
 	
-	//Add self to data forwarding path
-	dataPacket.append(toBinary(thisNode->nodeID));
-	
-	printPacket(dataPacket);
+	//printPacket(dataPacket);
 	sendPacket(dataPacket);
 
 }
@@ -277,7 +358,9 @@ void createLink(int destination) {
 	//thisNode->routingTable.at(destination-1).at(1) = destination;
 	//thisNode->routingTable.at(destination-1).at(2) = 1;
 	
-	thisNode->outputNode();
+	//thisNode->outputNode();
+	
+	sendTable();
 }
 
 //Remove a link to a node, need to update the distance vectors
@@ -290,11 +373,15 @@ void removeLink(int destination) {
 	}
 	
 	//Update routing table, nullify the link using -1, should get properly updated by next update of routing table
+	
 	thisNode->routingTable.at(destination-1).at(1) = -1;
 	thisNode->routingTable.at(destination-1).at(2) = -1;
 	
-	thisNode->outputNode();
 	//update routing table
+	//thisNode->outputNode();
+	
+	sendTable();
+    
 }
 
 void *controlThread(void *dummy) {
@@ -331,8 +418,12 @@ void *controlThread(void *dummy) {
         exit(1);
     }
     
+    sendTable();
+    
     while(true) {
-        cout << "Waiting on port " << thisNode->controlPort << endl;
+        //cout << "Waiting on port " << thisNode->controlPort << endl;
+        
+        //thisNode->outputNode();
         
         fd_set tempfdset;
 		FD_ZERO(&tempfdset);
@@ -346,27 +437,21 @@ void *controlThread(void *dummy) {
             exit(1);
         }
         
-        //no message was received from any nodes or control client, so now we send out our routing table
-        sendTable();
-        
         if (FD_ISSET(sd, &tempfdset)) {
 			bytesReceived = recvfrom(sd, buffer, 1024, 0, (struct sockaddr*)&remoteAddr, &addrLen);
 			
-		    cout << "Received " << bytesReceived << " bytes." << endl;
 		    if(bytesReceived > 0) {
-		        buffer[bytesReceived] = 0;
-		        
-		        cout << "Message: " << buffer << endl;
-		        
 		        string fullString = buffer;
 		        istringstream iss(fullString);
 		        string command;
-		        
-		        if((iss >> command) && command == "table") {
+		        iss >> command;
+		        //cout << fullString << endl;
+		        if(command == "table") {
 		        	//everything in buffer from index 6 onwards will be a routing table
 		        	string routingString;
 		        	iss >> routingString;
 		        	
+		        	//cout << "Updating table" << endl;
 		        	updateTable(toRoutingVector(routingString));
 		        }
 		        
@@ -377,6 +462,7 @@ void *controlThread(void *dummy) {
 				    //send message to the data port, telling it to generate a packet to the destination nodeID
 				    //this goes to *dataThread()
 				    if(command == "generate-packet") {
+				        //cout << "In the control thread" << endl;
 				    	struct sockaddr_in servAddr2;
 				    	socklen_t remoteAddrLen = sizeof(servAddr2);
 	
@@ -396,7 +482,7 @@ void *controlThread(void *dummy) {
 						servAddr2.sin_addr.s_addr = inet_addr(inet_ntoa(*ipAddress2[0]));
 				    
 				    	//send message to data port
-				    	string temp = to_string(destination);	
+				    	string temp = "initial " + to_string(destination);	
 						strcpy(buffer, temp.c_str());
 				    	
 				    	if(sendto(sd, buffer, strlen(buffer), 0, (struct sockaddr*)&servAddr2, remoteAddrLen) == -1) {
@@ -413,6 +499,14 @@ void *controlThread(void *dummy) {
 				    }
 		        }
 		    }
+		    
+		    sendTable();
+		}
+		
+		else {
+		    //no message was received from any nodes or control client, so now we send out our routing table
+		    cout << "got to select else statement" << endl;
+            sendTable();
 		}
     }
     
@@ -453,7 +547,7 @@ void *dataThread(void *dummy) {
     }
 
     while(true) {
-    	cout << "Waiting on port " << thisNode->dataPort << endl;
+    	//cout << "Waiting on port " << thisNode->dataPort << endl;
         
         fd_set tempfdset;
 		FD_ZERO(&tempfdset);
@@ -467,19 +561,28 @@ void *dataThread(void *dummy) {
         if (FD_ISSET(sd, &tempfdset)) {
 			bytesReceived = recvfrom(sd, buffer, 1024, 0, (struct sockaddr*)&remoteAddr, &addrLen);
 			
-		    cout << "Received " << bytesReceived << " bytes." << endl;
 		    if(bytesReceived > 0) {
-		        buffer[bytesReceived] = 0;
-		        
-		        cout << "Message: " << buffer << endl;
-		        
 		        string fullString = buffer;
-		        istringstream iss(fullString);
-		        int destination;
 		        
-		        iss >> destination;
+		        if(fullString[0] != 'i') {
+		            //parse
 		        
-		        generate(destination);
+		        	int destination = toInt(fullString.substr(8,8));
+		        	if(destination == thisNode->nodeID) {
+		        	    //this is the node that should receive the packets
+		        	    fullString.append(toBinary(destination));
+		        	    printPacket(fullString);
+		        	}
+		        	
+		        	else {
+		        	    sendPacket(fullString);
+		        	}
+		        }
+		        
+		        else {
+		        	int destination = stoi(fullString.substr(8,1));
+				    generate(destination);
+                }
 		    }
 		}
     }

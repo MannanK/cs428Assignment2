@@ -1,4 +1,4 @@
-all:	controlClient	nodeCreator
+all:	clean controlClient	nodeCreator
 
 controlClient:	controlClient.o
 	g++ -pthread -std=c++11 Node.o controlClient.o -o controlClient
