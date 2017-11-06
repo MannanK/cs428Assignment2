@@ -21,6 +21,7 @@
 using namespace std;
 
 vector<Node*> nodes;
+int maxNodes = 0;
 
 void passCommand(string command, int source, int destination) {
 
@@ -175,6 +176,12 @@ int main(int argc, char *argv[]) {
 			
 	} else cout << "\nUnable to open file." << endl;
 	
-	passCommand(command, source, destination);
+	if(source != destination && source <= nodes.size() && destination <= nodes.size() && source > 0 && destination > 0) {
+		passCommand(command, source, destination);
+	}
+	
+	else {
+		cerr << "Node values must not be the same and must be valid current node IDs." << endl;
+	}
 }
 

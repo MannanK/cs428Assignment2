@@ -212,37 +212,39 @@ void sendTable() {
 //Update our current routing table based on the routing table we just received
 //Do all the math, Djikstra's
 void updateTable(vector<vector<int>> routingTable) {
-    pthread_mutex_lock( &mutex2 ); 
+
+    pthread_mutex_lock( &mutex2 );
+    thisNode->outputNode();
     
     //cout << "THIS NODE" << endl;
-    //thisNode->outputNode();
+    
     
     //cout << "RECEIVED ROUTING TABLE"<< endl;
 	//for(int i = 0; i < routingTable.size(); i++) {
 //		cout << "(" << routingTable.at(i).at(0) << ", " << routingTable.at(i).at(1) << ", " << routingTable.at(i).at(2) << ")" << endl;
 	//}
 	
-	//sleep(1);
+	
     //Loop through the received routing table
     for(int i = 0; i < routingTable.size(); i++) {
     
         //If the distance to a node in the current routing table is greater than that in the received routing table, or if the distance is unknown, update your table
         //If the received routing table has a distance to a node of -1 never update
-//        if((thisNode->routingTable.at(i).at(2) > routingTable.at(i).at(2) || thisNode->routingTable.at(i).at(2) == -1) && routingTable.at(i).at(2) > -1) {
-//            int j = 0;
-//            //Use this to determine the node that passed the distance vector for next hop
-//            for(j; j < routingTable.size(); j++) {
-//                if(routingTable.at(j).at(2) == 0) {
-//                    break;
-//                }
-//            }
-// 	        //Update info
-//            thisNode->routingTable.at(i).at(1) = j+1;
-//            thisNode->routingTable.at(i).at(2) = routingTable.at(i).at(2) + 1;          
-//        }
+        if((thisNode->routingTable.at(i).at(2) > routingTable.at(i).at(2) || thisNode->routingTable.at(i).at(2) == -1) && routingTable.at(i).at(2) > -1) {
+            int j = 0;
+            //Use this to determine the node that passed the distance vector for next hop
+            for(j; j < routingTable.size(); j++) {
+                if(routingTable.at(j).at(2) == 0) {
+                    break;
+                }
+            }
+ 	        //Update info
+            thisNode->routingTable.at(i).at(1) = j+1;
+            thisNode->routingTable.at(i).at(2) = routingTable.at(i).at(2) + 1;          
+        }
 
 		//CASE 1: If no distance is present, set it to received distance
-		if(thisNode->routingTable.at(i).at(2) == -1 && routingTable.at(i).at(2) != -1) {
+/*		if(thisNode->routingTable.at(i).at(2) == -1 && routingTable.at(i).at(2) != -1) {
 			int j = 0;
             for(j; j < routingTable.size(); j++) {
                 if(routingTable.at(j).at(2) == 0) {
@@ -254,7 +256,7 @@ void updateTable(vector<vector<int>> routingTable) {
 		}
 		
 		//CASE 2: If my distance is greater than received distance, update
-		else if((thisNode->routingTable.at(i).at(2) > routingTable.at(i).at(2)+1) && (thisNode->routingTable.at(i).at(1) != routingTable.at(i).at(1)) && routingTable.at(i).at(2) != -1) {
+		else if((thisNode->routingTable.at(i).at(2) > routingTable.at(i).at(2)) && (thisNode->routingTable.at(i).at(1) != routingTable.at(i).at(1)) && routingTable.at(i).at(2) != -1) {
 			int j = 0;
             for(j; j < routingTable.size(); j++) {
                 if(routingTable.at(j).at(2) == 0) {
@@ -275,8 +277,10 @@ void updateTable(vector<vector<int>> routingTable) {
             thisNode->routingTable.at(i).at(1) = j+1;
             thisNode->routingTable.at(i).at(2) = routingTable.at(i).at(2) + 1; 
 		}
+*/
     }
     
+    //thisNode->outputNode();
     //cout << "----------------------------------" << endl;
     //thisNode->outputNode();
     //cout << "----------------------------------" << endl;
@@ -458,13 +462,14 @@ void removeLink(int destination) {
 		}
 	}
 	
+	sleep(1);
 	//cout << "got past the source" << endl;
 	
 	//update routing table
 	//thisNode->outputNode();
 	
-	//sendTable();
-    
+	
+	sendTable();
 }
 
 void *controlThread(void *dummy) {
