@@ -60,7 +60,7 @@ void passCommand(string command, int source, int destination) {
 	}
 	
 	struct in_addr **ipAddress;
-    	ipAddress = (struct in_addr **) tempStruct->h_addr_list;
+    ipAddress = (struct in_addr **) tempStruct->h_addr_list;
 	
 	servAddr.sin_addr.s_addr = inet_addr(inet_ntoa(*ipAddress[0]));
 
@@ -78,10 +78,10 @@ void passCommand(string command, int source, int destination) {
 	
 		memset((char*)&servAddr2, 0, sizeof(servAddr2));
 		servAddr2.sin_family = AF_INET;
-		servAddr2.sin_port = htons(nodes.at(destination-1)->controlPort);
+		servAddr2.sin_port = htons(nodes.at(source-1)->controlPort);
 		
 		struct hostent *tempStruct2;
-		if ((tempStruct2 = gethostbyname(nodes.at(destination-1)->hostName.c_str())) == NULL) {
+		if ((tempStruct2 = gethostbyname(nodes.at(source-1)->hostName.c_str())) == NULL) {
 			fprintf(stderr, "Error while getting host name\n");
 			exit(1);
 		}
@@ -91,10 +91,36 @@ void passCommand(string command, int source, int destination) {
 	
 		servAddr2.sin_addr.s_addr = inet_addr(inet_ntoa(*ipAddress2[0]));
 	
-		string temp = command + " " + to_string(source);	
+		string temp = command + " " + to_string(destination) + " ";	
 		strcpy(msg, temp.c_str());
 	
 		if(sendto(sd, msg, strlen(msg), 0, (struct sockaddr*)&servAddr2, remoteAddrLen) == -1) {
+			perror("message sending failed");
+		}
+		
+		// -------------------------------------------------------
+		
+		struct sockaddr_in servAddr3;
+	
+		memset((char*)&servAddr3, 0, sizeof(servAddr3));
+		servAddr3.sin_family = AF_INET;
+		servAddr3.sin_port = htons(nodes.at(destination-1)->controlPort);
+		
+		struct hostent *tempStruct3;
+		if ((tempStruct3 = gethostbyname(nodes.at(destination-1)->hostName.c_str())) == NULL) {
+			fprintf(stderr, "Error while getting host name\n");
+			exit(1);
+		}
+	
+		struct in_addr **ipAddress3;
+		ipAddress3 = (struct in_addr **) tempStruct3->h_addr_list;
+	
+		servAddr3.sin_addr.s_addr = inet_addr(inet_ntoa(*ipAddress3[0]));
+	
+		temp = command + " " + to_string(source) + " ";	
+		strcpy(msg, temp.c_str());
+	
+		if(sendto(sd, msg, strlen(msg), 0, (struct sockaddr*)&servAddr3, remoteAddrLen) == -1) {
 			perror("message sending failed");
 		}
 	}
