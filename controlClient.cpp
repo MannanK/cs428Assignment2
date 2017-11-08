@@ -21,7 +21,6 @@
 using namespace std;
 
 vector<Node*> nodes;
-int maxNodes = 0;
 
 void passCommand(string command, int source, int destination) {
 
