@@ -103,7 +103,7 @@ vector <vector<int>> toRoutingVector(string routingString) {
 
 //Output the packet header info
 void printPacket(string packet){
-    cout << "-------------PACKET RECEIVED-------------" << endl;
+    cout << "--------PACKET RECEIVED---------" << endl;
 	cout << "Header" << endl;
 	cout << "Source ID: " << toInt(packet.substr(0, 8)) << endl;
 	cout << "Destination ID: " << toInt(packet.substr(8, 8)) << endl;
@@ -120,7 +120,7 @@ void printPacket(string packet){
 	}
 	
 	cout << endl;
-	cout << "-----------------------------------------" << endl << endl;
+	cout << "--------------------------------" << endl << endl;
 }
 
 //Initial version of a Node's table. Adds info about neighbors, but keeps everything else blank'
@@ -171,6 +171,7 @@ void sendTable() {
 		perror("binding failed");
 		exit(1);
 	}
+
     for(int i=0; i < thisNode->neighborInfo.size(); i++) {
         //cout << "node " << thisNode->nodeID << " sending table to node " << thisNode->neighborInfo.at(i)->nodeID << endl;
     
@@ -218,7 +219,7 @@ void updateTable(vector<vector<int>> routingTable) {
     
     vector<vector<int>> oldTable = thisNode->routingTable;
     
-    //Determine where the routing table came from
+    
     int sourceNode;
     for(sourceNode = 1; sourceNode <= routingTable.size(); sourceNode++) {
     	if(routingTable.at(sourceNode-1).at(2) == 0) {
@@ -227,23 +228,6 @@ void updateTable(vector<vector<int>> routingTable) {
     }
     
     for(int i = 0; i < thisNode->routingTable.size(); i++) {
-    	if(thisNode->routingTable.at(i).at(2) == 1) {
-    		int found = 0;
-    		for(int j = 0; j < thisNode->neighborInfo.size(); j++) {
-    			if(thisNode->neighborInfo.at(j)->nodeID == i+1) {
-    				found = 1;
-    				break;
-    			}
-    		}
-    		if(found==0) {
-    		    thisNode->routingTable.at(i).at(1) = -1;
-            	thisNode->routingTable.at(i).at(2) = -1; 
-    		}
-    	}
-    }
-    
-
-    for(int i = 0; i < thisNode->routingTable.size(); i++) {
     	if(thisNode->routingTable.at(i).at(1) == sourceNode && thisNode->routingTable.at(i).at(2) > 1) {
     		if(routingTable.at(i).at(2) != thisNode->routingTable.at(i).at(2)-1) {
     			thisNode->routingTable.at(i).at(1) = -1;
@@ -251,39 +235,42 @@ void updateTable(vector<vector<int>> routingTable) {
     		}
     	}
     }
+    //cout << "THIS NODE" << endl;
+    
+    
 
+	
+	
     //Loop through the received routing table
     for(int i = 0; i < routingTable.size(); i++) {
     
-	
-		
-	    //If the distance to a node in the current routing table is greater than that in the received routing table, or if the distance is unknown, update your table
-	    //If the received routing table has a distance to a node of -1 never update
-	    if((thisNode->routingTable.at(i).at(2) > routingTable.at(i).at(2) || thisNode->routingTable.at(i).at(2) == -1) && routingTable.at(i).at(2) > -1) {
-	        //Use this to determine the node that passed the distance vector for next hop
-	        
-	        if(thisNode->routingTable.at(i).at(2) != routingTable.at(i).at(2) + 1) {
-	         	//Update info
-	        	thisNode->routingTable.at(i).at(1) = sourceNode;
-	        	thisNode->routingTable.at(i).at(2) = routingTable.at(i).at(2) + 1; 
-	        }
-	     
-	    }
-
-    }
-    
-    //If distance to a node exceeds the number of nodes, the node is unreachable, set to -1
-    for(int i = 0; i < routingTable.size(); i++) {
-    	if(thisNode->routingTable.at(i).at(2) > thisNode->routingTable.size()) {
+		if(thisNode->routingTable.at(i).at(2) > thisNode->routingTable.size()) {
 			thisNode->routingTable.at(i).at(1) = -1;
 	      	thisNode->routingTable.at(i).at(2) = -1;
 		}
-	}
-	
-	
-	
-	//compare the routing table to how it was prior to the update
-	//If it  changed output it
+		
+// ---------------------------------------------------------------------------- WORKS WITHOUT THE ELSE/ELSE IF?????????????----------------------------------------------------------------------------
+		
+		    //If the distance to a node in the current routing table is greater than that in the received routing table, or if the distance is unknown, update your table
+		    //If the received routing table has a distance to a node of -1 never update
+		    if((thisNode->routingTable.at(i).at(2) > routingTable.at(i).at(2) || thisNode->routingTable.at(i).at(2) == -1) && routingTable.at(i).at(2) > -1) {
+		        //Use this to determine the node that passed the distance vector for next hop
+		        
+		        if(thisNode->routingTable.at(i).at(2) != routingTable.at(i).at(2) + 1) {
+		         	//Update info
+		        	thisNode->routingTable.at(i).at(1) = sourceNode;
+		        	thisNode->routingTable.at(i).at(2) = routingTable.at(i).at(2) + 1; 
+		        }
+		     
+		    }
+
+    }
+    
+    //thisNode->outputNode();
+    //cout << "----------------------------------" << endl;
+    //thisNode->outputNode();
+    //cout << "----------------------------------" << endl;
+    
     int same = 1;
     for(int i = 0; i < thisNode->routingTable.size(); i++) {
     	if(thisNode->routingTable.at(i).at(1) != oldTable.at(i).at(1) || thisNode->routingTable.at(i).at(2) != oldTable.at(i).at(2)) {
@@ -307,7 +294,6 @@ void updateTable(vector<vector<int>> routingTable) {
 
 //Recieve packet from a node and send it again
 void sendPacket(string dataPacket) {
-	
 	//Update ttl
 	int ttl = toInt(dataPacket.substr(24,8));
 	
@@ -323,7 +309,7 @@ void sendPacket(string dataPacket) {
 	}
 	
 	else {
-	    
+	    pthread_mutex_lock(&mutex3);
 		//Replace ttl in packet
 		dataPacket.replace(24, 8, toBinary(ttl));
 		
@@ -343,6 +329,7 @@ void sendPacket(string dataPacket) {
 		int nextPort;
 		string nextHost;
 		for(int i = 0; i < thisNode->neighborInfo.size(); i++) {
+			cout << "Got here" << endl;
 		    if(nextHop == thisNode->neighborInfo.at(i)->nodeID) {
 		        nextPort = thisNode->neighborInfo.at(i)->dataPort;
 		        nextHost = thisNode->neighborInfo.at(i)->hostName;
@@ -351,8 +338,7 @@ void sendPacket(string dataPacket) {
 		}
 		
 		cout << "Node " << thisNode->nodeID << " forwarding to " << nextHop << " to get to node " << destination << "." << endl << endl;
-        
-        
+        pthread_mutex_unlock(&mutex3);
 		char buffer[1024];
         struct sockaddr_in myAddr;
     
@@ -456,26 +442,15 @@ void readNewNeighbor(int destination) {
 
 //Add a link to a Node, need to fetch information about newly connected node by exchanging distance vectors
 void createLink(int destination) {
-	pthread_mutex_lock(&mutex2);
+	
 	//Update routing table, should distance is 1 since it is a neighbor
 	thisNode->routingTable.at(destination-1).at(1) = destination;
 	thisNode->routingTable.at(destination-1).at(2) = 1;
 	
 	readNewNeighbor(destination);
 	
-	sleep(1);
-	
-	cout << endl << "CREATING LINK BETWEEN " << thisNode->nodeID << " AND " << destination << endl << endl;
 	
 	sendTable();
-	
-	cout << "----------ROUTING TABLE UPDATED----------"<< endl;
-    	for(int i = 0; i < thisNode->routingTable.size(); i++) {
-			cout << "(" << thisNode->routingTable.at(i).at(0) << ", " << thisNode->routingTable.at(i).at(1) << ", " << thisNode->routingTable.at(i).at(2) << ")" << endl;
-		}
-	cout << "-----------------------------------------"<< endl;
-	
-	pthread_mutex_unlock(&mutex2);
 }
 
 //Remove a link to a node, need to update the distance vectors
@@ -504,15 +479,9 @@ void removeLink(int destination) {
 	//cout << "got past the source" << endl;
 	
 	//update routing table
-	cout << endl << "REMOVING LINK BETWEEN " << thisNode->nodeID << " AND " << destination << endl << endl;
+	cout << "REMOVING LINK FROM " << thisNode->nodeID << " TO " << destination << endl;
 	
 	sendTable();
-	
-	cout << "----------ROUTING TABLE UPDATED----------"<< endl;
-    for(int i = 0; i < thisNode->routingTable.size(); i++) {
-		cout << "(" << thisNode->routingTable.at(i).at(0) << ", " << thisNode->routingTable.at(i).at(1) << ", " << thisNode->routingTable.at(i).at(2) << ")" << endl;
-	}
-	cout << "-----------------------------------------"<< endl;
 	pthread_mutex_unlock(&mutex2);
 }
 
@@ -604,7 +573,7 @@ void *controlThread(void *dummy) {
 				    //send message to the data port, telling it to generate a packet to the destination nodeID
 				    //this goes to *dataThread()
 				    if(command == "generate-packet") {
-				        //cout << destination << endl;
+				        //cout << "dest: " << destination << endl;
 				        
 				        //cout << "In the control thread" << endl;
 				    	struct sockaddr_in servAddr2;
@@ -626,7 +595,7 @@ void *controlThread(void *dummy) {
 						servAddr2.sin_addr.s_addr = inet_addr(inet_ntoa(*ipAddress2[0]));
 				    
 				    	//send message to data port
-				    	string temp = "initial " + to_string(destination);	
+				    	string temp = "initial " + to_string(destination) + " ";	
 						strcpy(buffer, temp.c_str());
 				    	
 				    	if(sendto(sd, buffer, strlen(buffer), 0, (struct sockaddr*)&servAddr2, remoteAddrLen) == -1) {
@@ -714,7 +683,6 @@ void *dataThread(void *dummy) {
 		        	int destination = toInt(fullString.substr(8,8));
 		        	if(destination == thisNode->nodeID) {
 		        	    //this is the node that should receive the packets
-		        	
 		        	    
 	        	    	int ttl = toInt(fullString.substr(24,8));
                         int properLength = 32 + 8*(15-ttl);
@@ -731,7 +699,13 @@ void *dataThread(void *dummy) {
 		        }
 		        
 		        else {
-		        	int destination = stoi(fullString.substr(8,1));
+		        	istringstream iss(fullString);
+		        	string command;
+		        	int destination;
+		        	
+		        	iss >> command >> destination;
+		        	
+		        	//int destination = stoi(fullString.substr(8,1));
 				    generate(destination);
                 }
 		    }
@@ -843,9 +817,9 @@ int main(int argc, char* argv[]) {
 	}
 	
 	createTable();
-	cout << "----------------NODE INFO----------------" << endl;
+	cout << "--------------NODE INFO--------------" << endl;
 	thisNode->outputNode();
-	cout << "-----------------------------------------" << endl << endl;
+	cout << "-------------------------------------" << endl << endl;
     //Create threads for the data and  control ports of the node
     int i=0;
 	pthread_t myThread;
@@ -855,47 +829,3 @@ int main(int argc, char* argv[]) {
 	pthread_join(myThread, NULL);
 }
 
-
-
-
-
-//        if(routingTable.at(thisNode->routingTable.at(i).at(2) - 1).at(2) == -1 && thisNode->routingTable.at(i).at(2) >= 0) {
-//        	thisNode->routingTable.at(i).at(1) = -1;
-//            thisNode->routingTable.at(i).at(2) = -1;    
-//        }
-
-		//CASE 1: If no distance is present, set it to received distance
-/*		if(thisNode->routingTable.at(i).at(2) == -1 && routingTable.at(i).at(2) != -1) {
-			int j = 0;
-            for(j; j < routingTable.size(); j++) {
-                if(routingTable.at(j).at(2) == 0) {
-                    break;
-                }
-            }
-            thisNode->routingTable.at(i).at(1) = j+1;
-            thisNode->routingTable.at(i).at(2) = routingTable.at(i).at(2) + 1; 
-		}
-		
-		//CASE 2: If my distance is greater than received distance, update
-		else if((thisNode->routingTable.at(i).at(2) > routingTable.at(i).at(2)) && (thisNode->routingTable.at(i).at(1) != routingTable.at(i).at(1)) && routingTable.at(i).at(2) != -1) {
-			int j = 0;
-            for(j; j < routingTable.size(); j++) {
-                if(routingTable.at(j).at(2) == 0) {
-                    break;
-                }
-            }
-            thisNode->routingTable.at(i).at(1) = j+1;
-            thisNode->routingTable.at(i).at(2) = routingTable.at(i).at(2) + 1; 
-		}
-		
-		else if(thisNode->routingTable.at(i).at(1) == routingTable.at(i).at(1) && routingTable.at(i).at(2) != -1) {
-			int j = 0;
-            for(j; j < routingTable.size(); j++) {
-                if(routingTable.at(j).at(2) == 0) {
-                    break;
-                }
-            }
-            thisNode->routingTable.at(i).at(1) = j+1;
-            thisNode->routingTable.at(i).at(2) = routingTable.at(i).at(2) + 1; 
-		}
-*/
