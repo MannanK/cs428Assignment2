@@ -1,0 +1,18 @@
+Mannan Kasliwal, Brandon Sultana
+Project 2
+
+---------------------USAGE---------------------
+
+a) ./nodeCreater <nodeID>
+b) One instance of nodeCreater should be run for each node in the virtual network, with each instance being in a different terminal
+
+c) ./controlClient <command> <source node> <destination node>
+d) The input file must always be in the same directory as the executables and must be named "input.txt"
+
+-----------------------------------------------
+
+--------------------COMMENTS-------------------
+
+While routing tables are updating, they will continuously print out their routing tables. Once updating has stabilized, printing will cease and you can start to run the generate, remove, and create commands. Make sure to not run controlClient or pass in any commands until routing tables have stabilized, otherwise unexpected behavior could occur.
+
+-----------------------------------------------

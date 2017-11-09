@@ -20,10 +20,11 @@
 
 using namespace std;
 
+//A vector that keeps track of all the information about each node in the input file
 vector<Node*> nodes;
 
+//Forwards the command given to the appropriate node(s)
 void passCommand(string command, int source, int destination) {
-
 	struct sockaddr_in myAddr, remoteAddr;
 	socklen_t remoteAddrLen = sizeof(remoteAddr);
 	
@@ -64,6 +65,7 @@ void passCommand(string command, int source, int destination) {
 	
 	servAddr.sin_addr.s_addr = inet_addr(inet_ntoa(*ipAddress[0]));
 
+	//Tell the source node to generate and send a packet to the destination node
 	if(command == "generate-packet") {
 	    string temp = "generate-packet " + to_string(destination) + " ";	
 	    strcpy(msg, temp.c_str());
@@ -73,6 +75,7 @@ void passCommand(string command, int source, int destination) {
 	    }
 	}
 	
+	//Tell the source and destination nodes to create or remove a link between them
 	else {
 		struct sockaddr_in servAddr2;
 	
@@ -141,6 +144,7 @@ int main(int argc, char *argv[]) {
 		int nodeID, controlPort, dataPort;
 		string hostName;
 		
+		//read input file to get information about all the nodes in the network, and store it in the list
 		while (getline(inputFile, newString)) {
 			std::istringstream ss1;
 			ss1.str(newString);
@@ -175,10 +179,10 @@ int main(int argc, char *argv[]) {
 			
 	} else cout << "\nUnable to open file." << endl;
 	
+	//Do some logic checking that makes sure we get valid commands from the user
 	if(source != destination && source <= nodes.size() && destination <= nodes.size() && source > 0 && destination > 0) {
 		passCommand(command, source, destination);
 	}
-	
 	else {
 		cerr << "Node values must not be the same and must be valid current node IDs." << endl;
 	}
