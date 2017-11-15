@@ -1,10 +1,4 @@
-1	remote00.cs.binghamton.edu	4000	4002	10
-2	remote00.cs.binghamton.edu	4001	4003	9	4
-3	remote01.cs.binghamton.edu	4000	4002	9	6
-4	remote01.cs.binghamton.edu	4001	4003	2	6	7	8
-5	remote02.cs.binghamton.edu	4000	4002	6
-6	remote02.cs.binghamton.edu	4001	4003	5	3	4
-7	remote03.cs.binghamton.edu	4000	4002	4
-8	remote03.cs.binghamton.edu	4001	4003	4
-9	remote04.cs.binghamton.edu	4000	4002	2	3
-10	remote04.cs.binghamton.edu	4001	4003	1
+1	remote00.cs.binghamton.edu	4000	4002	2	-1
+2	remote00.cs.binghamton.edu	4001	4003	1	3	-1
+3	remote01.cs.binghamton.edu	4000	4002	2	4	-1
+4	remote01.cs.binghamton.edu	4001	4003	3	-1
